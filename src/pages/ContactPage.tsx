@@ -160,12 +160,12 @@ export const ContactPage: React.FC = () => {
 
               <div className="pt-4 border-t border-slate-800 flex items-center justify-between text-xs">
                 <a
-                  href="https://panchayatcollege.ac.in"
+                  href="https://panchayatcollege.in/"
                   target="_blank"
                   rel="noreferrer"
-                  className="text-amber-400 hover:text-amber-300 font-semibold flex items-center gap-1"
+                  className="text-amber-400 hover:text-amber-300 font-semibold flex items-center gap-1 transition-colors"
                 >
-                  <span>College Main Website</span>
+                  <span>College Main Site</span>
                   <ExternalLink className="w-3.5 h-3.5" />
                 </a>
                 <span className="text-slate-400 text-[11px]">Affiliated to Sambalpur Univ</span>

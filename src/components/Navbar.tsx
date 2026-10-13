@@ -81,6 +81,7 @@ export const Navbar: React.FC<NavbarProps> = ({
     { id: 'library', label: 'Library' },
     { id: 'pyq', label: 'Previous Year Questions' },
     { id: 'notices', label: 'Notices' },
+    { id: 'downloads', label: 'Downloads' },
     { id: 'committees', label: 'Committees' },
     { id: 'contacts', label: 'Important Contacts' },
     { id: 'contact', label: 'Contact' },

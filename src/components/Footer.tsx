@@ -126,6 +126,14 @@ export const Footer: React.FC<FooterProps> = ({ onNavigate }) => {
                   Exam Notices & Circulars
                 </button>
               </li>
+              <li>
+                <button
+                  onClick={() => onNavigate('downloads')}
+                  className="hover:text-amber-300 transition cursor-pointer"
+                >
+                  Downloads & Forms Repository
+                </button>
+              </li>
             </ul>
           </div>
 

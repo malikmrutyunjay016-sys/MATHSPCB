@@ -11,6 +11,7 @@ import { GalleryPage } from './pages/GalleryPage';
 import { PYQPage } from './pages/PYQPage';
 import { LibraryPage } from './pages/LibraryPage';
 import { NoticesPage } from './pages/NoticesPage';
+import { DownloadsPage } from './pages/DownloadsPage';
 import { CommitteesPage } from './pages/CommitteesPage';
 import { ImportantContactsPage } from './pages/ImportantContactsPage';
 import { ContactPage } from './pages/ContactPage';
@@ -54,6 +55,7 @@ import {
   Syllabus,
   GalleryPhoto,
   DayOfWeek,
+  DownloadItem,
 } from './types';
 import {
   initialFaculty,
@@ -71,6 +73,7 @@ import {
   initialTimeTable,
   initialSyllabus,
   initialGallery,
+  initialDownloads,
 } from './data/initialData';
 import {
   subscribeToFaculty,
@@ -117,6 +120,9 @@ import {
   subscribeToGallery,
   saveGalleryPhoto,
   deleteGalleryPhoto,
+  subscribeToDownloads,
+  saveDownloadItem,
+  deleteDownloadItem,
 } from './services/db';
 import { testConnection } from './firebase/config';
 
@@ -184,6 +190,14 @@ function AppContent() {
   }, [timeTable, periods, classRows, ttHistory.length]);
   const [syllabuses, setSyllabuses] = useState<Syllabus[]>(initialSyllabus);
   const [galleryPhotos, setGalleryPhotos] = useState<GalleryPhoto[]>(initialGallery);
+  const [downloads, setDownloads] = useState<DownloadItem[]>(() => {
+    try {
+      const saved = localStorage.getItem('dept_downloads');
+      return saved ? JSON.parse(saved) : initialDownloads;
+    } catch {
+      return initialDownloads;
+    }
+  });
   const [inquiries, setInquiries] = useState<ContactMessage[]>([]);
   const [settings, setSettings] = useState<DepartmentSettings>(initialSettings);
 
@@ -328,6 +342,10 @@ function AppContent() {
       (data) => setGalleryPhotos(data),
       () => setGalleryPhotos(initialGallery)
     );
+    const unsubDownloads = subscribeToDownloads(
+      (data) => setDownloads(data),
+      () => setDownloads(initialDownloads)
+    );
     const unsubInquiries = subscribeToInquiries(
       (data) => setInquiries(data),
       () => {}
@@ -362,6 +380,7 @@ function AppContent() {
       unsubTimeTableConfig();
       unsubSyllabuses();
       unsubGallery();
+      unsubDownloads();
       unsubInquiries();
       unsubSettings();
     };
@@ -558,6 +577,42 @@ function AppContent() {
         setContacts((prev) => prev.filter((c) => c.id !== id));
         setDeleteModal((prev) => ({ ...prev, isOpen: false }));
         deleteContact(id).catch((err) => console.warn('deleteContact error:', err));
+      },
+    });
+  };
+
+  const handleSaveDownload = async (item: DownloadItem) => {
+    try {
+      await saveDownloadItem(item);
+      setDownloads((prev) => {
+        const idx = prev.findIndex((d) => d.id === item.id);
+        const next = idx >= 0 ? prev.map((d) => (d.id === item.id ? item : d)) : [item, ...prev];
+        try {
+          localStorage.setItem('dept_downloads', JSON.stringify(next));
+        } catch {}
+        return next;
+      });
+    } catch (err) {
+      console.error('Failed to save download:', err);
+      throw err;
+    }
+  };
+
+  const handleDeleteDownload = (id: string, title?: string) => {
+    setDeleteModal({
+      isOpen: true,
+      title: 'Delete Download Resource',
+      itemName: title || 'Selected Document',
+      onConfirm: async () => {
+        setDownloads((prev) => {
+          const next = prev.filter((d) => d.id !== id);
+          try {
+            localStorage.setItem('dept_downloads', JSON.stringify(next));
+          } catch {}
+          return next;
+        });
+        setDeleteModal((prev) => ({ ...prev, isOpen: false }));
+        deleteDownloadItem(id).catch((err) => console.warn('deleteDownload error:', err));
       },
     });
   };
@@ -970,6 +1025,25 @@ function AppContent() {
           />
         )}
 
+        {activeTab === 'downloads' && (
+          <DownloadsPage
+            downloads={downloads}
+            onSaveDownload={handleSaveDownload}
+            onDeleteDownload={(id, title) => handleDeleteDownload(id, title)}
+            syllabuses={syllabuses}
+            questionPapers={pyq}
+            onViewPDF={(title, url, category) =>
+              setPdfModalData({
+                isOpen: true,
+                title,
+                category,
+                fileUrl: url,
+              })
+            }
+            onNavigateToTab={setActiveTab}
+          />
+        )}
+
         {activeTab === 'committees' && (
           <CommitteesPage
             committees={committees}
@@ -1106,6 +1180,10 @@ function AppContent() {
             }
             onEditSyllabus={(s) => setSyllabusModal({ isOpen: true, item: s })}
             onDeleteSyllabus={handleDeleteSyllabus}
+            downloads={downloads}
+            onSaveDownload={handleSaveDownload}
+            onDeleteDownload={(id, title) => handleDeleteDownload(id, title)}
+            onNavigateToDownloads={() => setActiveTab('downloads')}
           />
         )}
       </main>

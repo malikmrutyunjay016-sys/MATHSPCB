@@ -36,8 +36,12 @@ import {
   BookMarked,
   Clock,
   CloudUpload,
+  Award,
+  ExternalLink,
 } from 'lucide-react';
 import { DriveBackupTab } from '../components/DriveBackupTab';
+import { MarkFoilGenerator } from '../components/MarkFoilGenerator';
+import { DownloadsPage } from './DownloadsPage';
 import {
   Faculty,
   Student,
@@ -53,6 +57,7 @@ import {
   TimeTableSlot,
   Syllabus,
   GalleryPhoto,
+  DownloadItem,
 } from '../types';
 import { useAuth } from '../context/AuthContext';
 import {
@@ -118,6 +123,10 @@ interface AdminDashboardProps {
   onAddSyllabus?: () => void;
   onEditSyllabus?: (s: Syllabus) => void;
   onDeleteSyllabus?: (id: string, name: string) => void;
+  downloads?: DownloadItem[];
+  onSaveDownload?: (item: DownloadItem) => Promise<void> | void;
+  onDeleteDownload?: (id: string, title?: string) => void;
+  onNavigateToDownloads?: () => void;
 }
 
 export const AdminDashboard: React.FC<AdminDashboardProps> = ({
@@ -135,6 +144,10 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   timeTable = [],
   syllabuses = [],
   galleryPhotos = [],
+  downloads = [],
+  onSaveDownload,
+  onDeleteDownload,
+  onNavigateToDownloads,
   onRefreshData,
   onAddFaculty,
   onEditFaculty,
@@ -185,6 +198,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     | 'credentials'
     | 'faculty'
     | 'students'
+    | 'markFoil'
+    | 'downloads'
     | 'syllabus'
     | 'timetable'
     | 'pyq'
@@ -783,6 +798,12 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     },
     { id: 'faculty', label: `Faculty (${faculty.length})`, icon: Users },
     { id: 'students', label: `Students (${students.length})`, icon: GraduationCap },
+    { id: 'markFoil', label: 'Mark Foil Generator', icon: Award },
+    {
+      id: 'downloads',
+      label: `Public Downloads (${downloads?.length || 0})`,
+      icon: Download,
+    },
     { id: 'syllabus', label: `Course Syllabi (${syllabuses.length})`, icon: BookMarked },
     { id: 'timetable', label: `Time Table (${timeTable.length})`, icon: Calendar },
     { id: 'pyq', label: `Question Papers (${pyq.length})`, icon: FileQuestion },
@@ -887,6 +908,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                   {[
                     { label: 'Student IDs & Passwords', count: credentials?.length || 0, tab: 'credentials', highlight: true },
                     { label: 'Enrolled Students', count: students.length, tab: 'students' },
+                    { label: 'Mark Foil Generator', count: students.length, tab: 'markFoil', highlight: true },
                     { label: 'Faculty Members', count: faculty.length, tab: 'faculty' },
                     { label: 'Course Syllabi', count: syllabuses.length, tab: 'syllabus' },
                     { label: 'Time Table Periods', count: timeTable.length, tab: 'timetable' },
@@ -1289,6 +1311,50 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                     </table>
                   </div>
                 </div>
+              </div>
+            )}
+
+            {/* SECTION: UNIVERSITY CONFIDENTIAL MARK FOIL GENERATOR (ADMIN ONLY) */}
+            {activeSection === 'markFoil' && (
+              <MarkFoilGenerator students={students} />
+            )}
+
+            {/* SECTION: PUBLIC DOWNLOADS MANAGEMENT (ADMIN ONLY) */}
+            {activeSection === 'downloads' && (
+              <div className="space-y-6">
+                <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
+                  <div>
+                    <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-50 text-amber-900 border border-amber-200 text-xs font-bold uppercase tracking-wider mb-2">
+                      <Download className="w-3.5 h-3.5 text-amber-700" />
+                      <span>Menu &rarr; Downloads Repository Management</span>
+                    </div>
+                    <h2 className="font-serif-academic text-xl sm:text-2xl font-bold text-[#0c2340]">
+                      Public Download Resources & Syllabi
+                    </h2>
+                    <p className="text-xs text-slate-600 max-w-2xl mt-1">
+                      Manage syllabi, timetable routine sheets, seminar forms, academic calendars, and departmental guidelines published for students and the public under menu &rarr; downloads.
+                    </p>
+                  </div>
+
+                  {onNavigateToDownloads && (
+                    <button
+                      type="button"
+                      onClick={onNavigateToDownloads}
+                      className="px-4 py-2.5 bg-[#0c2340] hover:bg-slate-800 text-amber-300 font-bold rounded-xl text-xs flex items-center gap-2 transition shadow-xs cursor-pointer shrink-0"
+                    >
+                      <ExternalLink className="w-4 h-4 text-amber-400" />
+                      <span>View Public Downloads Page</span>
+                    </button>
+                  )}
+                </div>
+
+                <DownloadsPage
+                  downloads={downloads}
+                  onSaveDownload={onSaveDownload}
+                  onDeleteDownload={onDeleteDownload}
+                  syllabuses={syllabuses}
+                  questionPapers={pyq}
+                />
               </div>
             )}
 

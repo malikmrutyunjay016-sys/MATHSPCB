@@ -30,6 +30,7 @@ import {
   TimeTableClassRow,
   Syllabus,
   GalleryPhoto,
+  DownloadItem,
 } from '../types';
 import {
   initialFaculty,
@@ -47,6 +48,7 @@ import {
   initialTimeTable,
   initialSyllabus,
   initialGallery,
+  initialDownloads,
 } from '../data/initialData';
 
 // Seed Initial Data if collections are empty
@@ -150,6 +152,11 @@ export async function seedInitialDatabase() {
     // Seed Gallery Photos
     for (const item of initialGallery) {
       await setDoc(doc(db, 'gallery', item.id), sanitizeForFirestore(item), { merge: true });
+    }
+
+    // Seed Downloads
+    for (const item of initialDownloads) {
+      await setDoc(doc(db, 'downloads', item.id), sanitizeForFirestore(item), { merge: true });
     }
 
     markDatabaseAsSeeded();
@@ -1480,6 +1487,93 @@ export async function deleteGalleryPhoto(id: string) {
   } catch (error) {
     handleFirestoreError(error, OperationType.DELETE, path);
     throw error;
+  }
+}
+
+// ------------------- DOWNLOADS -------------------
+export function subscribeToDownloads(
+  callback: (downloads: DownloadItem[]) => void,
+  fallback: () => void
+) {
+  const path = 'downloads';
+  try {
+    const q = query(collection(db, path));
+    return onSnapshot(
+      q,
+      async (snapshot) => {
+        if (snapshot.empty) {
+          try {
+            const saved = localStorage.getItem('dept_downloads');
+            if (saved) {
+              callback(JSON.parse(saved));
+              return;
+            }
+          } catch {}
+          callback(initialDownloads);
+          for (const item of initialDownloads) {
+            setDoc(doc(db, 'downloads', item.id), sanitizeForFirestore(item), { merge: true }).catch(() => {});
+          }
+          return;
+        }
+        const data = snapshot.docs.map((d) => ({ id: d.id, ...d.data() } as DownloadItem));
+        try {
+          localStorage.setItem('dept_downloads', JSON.stringify(data));
+        } catch {}
+        callback(data);
+      },
+      (error) => {
+        console.warn('Downloads snapshot fallback:', error);
+        fallback();
+      }
+    );
+  } catch (error) {
+    handleFirestoreError(error, OperationType.GET, path);
+    fallback();
+    return () => {};
+  }
+}
+
+export async function saveDownloadItem(item: DownloadItem) {
+  const path = `downloads/${item.id}`;
+  try {
+    await setDoc(doc(db, 'downloads', item.id), sanitizeForFirestore({
+      ...item,
+      updatedAt: new Date().toISOString(),
+    }), { merge: true });
+    // Keep local storage synced as well
+    try {
+      const saved = localStorage.getItem('dept_downloads');
+      const list: DownloadItem[] = saved ? JSON.parse(saved) : [...initialDownloads];
+      const idx = list.findIndex((d) => d.id === item.id);
+      if (idx >= 0) {
+        list[idx] = item;
+      } else {
+        list.unshift(item);
+      }
+      localStorage.setItem('dept_downloads', JSON.stringify(list));
+    } catch {}
+  } catch (err) {
+    handleFirestoreError(err, OperationType.WRITE, path);
+    throw err;
+  }
+}
+
+export async function deleteDownloadItem(id: string) {
+  const path = `downloads/${id}`;
+  try {
+    await deleteDoc(doc(db, 'downloads', id));
+    // Keep local storage synced
+    try {
+      const saved = localStorage.getItem('dept_downloads');
+      if (saved) {
+        const list: DownloadItem[] = JSON.parse(saved);
+        const filtered = list.filter((d) => d.id !== id);
+        localStorage.setItem('dept_downloads', JSON.stringify(filtered));
+      }
+    } catch {}
+  } catch (err) {
+    handleFirestoreError(err, OperationType.DELETE, path);
+    throw err;
   }
 }
 

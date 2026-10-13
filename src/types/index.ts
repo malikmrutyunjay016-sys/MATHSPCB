@@ -249,3 +249,22 @@ export interface GalleryPhoto {
   createdAt: string;
   updatedAt?: string;
 }
+
+export type DownloadCategory = 'Syllabus' | 'Routine' | 'Form' | 'Calendar' | 'Regulation';
+export type DownloadCourseBadge = 'UG NEP' | 'UG CBCS' | 'PG' | 'All';
+
+export interface DownloadItem {
+  id: string;
+  title: string;
+  code?: string;
+  category: DownloadCategory;
+  courseBadge: DownloadCourseBadge;
+  session: string;
+  fileSize: string;
+  description: string;
+  fileUrl: string;
+  isImportant?: boolean;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
