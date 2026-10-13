@@ -7,7 +7,6 @@ import {
   BookOpen,
   Calendar,
   GraduationCap,
-  Sparkles,
   ClipboardList,
   CheckCircle2,
   ExternalLink,
@@ -647,18 +646,6 @@ export const DownloadsPage: React.FC<DownloadsPageProps> = ({
           </div>
         )}
 
-        {/* Institutional Academic Guidance Footer Note */}
-        <div className="bg-[#0b1a2f] text-white rounded-2xl p-6 sm:p-8 shadow-xl border border-slate-800 space-y-3">
-          <div className="flex items-center gap-2">
-            <Sparkles className="w-5 h-5 text-amber-400" />
-            <h3 className="font-serif-academic text-base font-bold">
-              Sambalpur University Academic Compliance
-            </h3>
-          </div>
-          <p className="text-xs text-slate-300 leading-relaxed max-w-4xl">
-            All course curricula and evaluation regulations conform to the National Education Policy (NEP 2020) and Sambalpur University CBCS guidelines. For physical copies or certified attestations, contact the Department Office in Room 32, Panchayat College, Baragada.
-          </p>
-        </div>
       </div>
 
       {/* ================= EDIT / ADD FILE MODAL (FOR ADMIN) ================= */}
