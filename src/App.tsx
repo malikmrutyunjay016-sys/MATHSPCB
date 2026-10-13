@@ -1203,7 +1203,12 @@ function AppContent() {
       </main>
 
       {/* Footer */}
-      <Footer onNavigate={setActiveTab} />
+      <Footer
+        onNavigate={(tab) => {
+          setActiveTab(tab);
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+        }}
+      />
 
       {/* Search Modal */}
       <SearchModal
