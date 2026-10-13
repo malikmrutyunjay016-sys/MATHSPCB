@@ -1334,7 +1334,7 @@ export const TimeTablePage: React.FC<TimeTablePageProps> = ({
                     Official Time Table • Print &amp; Export
                   </h3>
                   <p className="text-xs text-slate-300">
-                    Panchayat College, Baragada (Autonomous) • Department of Mathematics
+                    Panchayat College, Baragada • Department of Mathematics
                   </p>
                 </div>
               </div>

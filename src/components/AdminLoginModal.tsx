@@ -194,7 +194,7 @@ export const AdminLoginModal: React.FC<AdminLoginModalProps> = ({
                   : 'Change Administrator Password'}
               </h2>
               <p className="text-xs text-slate-400">
-                Panchayat College, Baragada (Autonomous)
+                Panchayat College, Baragada
               </p>
             </div>
           </div>

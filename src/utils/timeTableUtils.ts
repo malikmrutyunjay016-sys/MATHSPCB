@@ -425,7 +425,7 @@ export function generatePrintableMasterDayHtml(
   <div class="canvas-container">
     <div id="day-wrapper" class="wrapper">
       <div class="header">
-        <div class="title-college">PANCHAYAT COLLEGE, BARAGADA (AUTONOMOUS)</div>
+        <div class="title-college">PANCHAYAT COLLEGE, BARAGADA</div>
         <div class="title-dept">DEPARTMENT OF MATHEMATICS • OFFICIAL MASTER TIME TABLE</div>
         <div class="meta-bar">
           <span>DAY: <strong style="color: #b45309;">${day.toUpperCase()}</strong></span>
@@ -615,7 +615,7 @@ export function generatePrintableScheduleHtml(
   <div class="canvas-container">
     <div id="cohort-wrapper" class="wrapper">
       <div class="header">
-        <div class="title-college">PANCHAYAT COLLEGE, BARAGADA (AUTONOMOUS)</div>
+        <div class="title-college">PANCHAYAT COLLEGE, BARAGADA</div>
         <div class="title-dept">DEPARTMENT OF MATHEMATICS • MASTER CLASS TIME TABLE</div>
         <div class="meta-bar">
           <span>PROGRAM: <strong>${course}</strong></span>
@@ -983,7 +983,7 @@ export function generatePrintableAllDaysMasterHtml(
     <div id="print-wrapper" class="single-page-wrapper">
       <div>
         <div class="header">
-          <div class="title-college">PANCHAYAT COLLEGE, BARAGADA (AUTONOMOUS)</div>
+          <div class="title-college">PANCHAYAT COLLEGE, BARAGADA</div>
           <div class="title-dept">DEPARTMENT OF MATHEMATICS • ALL-DAYS MASTER CLASS TIME TABLE</div>
           <div class="meta-bar">
             <span>WORKING DAYS: <strong>MONDAY – SATURDAY (6 DAYS)</strong></span>
@@ -1398,7 +1398,7 @@ export function generatePrintableFacultyScheduleHtml(
   <div class="canvas-container">
     <div id="faculty-wrapper" class="wrapper">
       <div class="header">
-        <div class="title-college">PANCHAYAT COLLEGE, BARAGADA (AUTONOMOUS)</div>
+        <div class="title-college">PANCHAYAT COLLEGE, BARAGADA</div>
         <div class="title-dept">DEPARTMENT OF MATHEMATICS • INDIVIDUAL FACULTY WORKLOAD &amp; ROUTINE</div>
         
         <div class="faculty-title-box">
