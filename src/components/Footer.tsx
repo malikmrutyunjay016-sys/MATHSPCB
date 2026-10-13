@@ -8,6 +8,7 @@ import {
   ArrowUp,
   ShieldCheck,
 } from 'lucide-react';
+import { CollegeLogo } from './CollegeLogo';
 
 interface FooterProps {
   onNavigate: (tabId: string) => void;
@@ -26,14 +27,7 @@ export const Footer: React.FC<FooterProps> = ({ onNavigate }) => {
           {/* Col 1: College & Department Identity */}
           <div className="lg:col-span-4 space-y-4">
             <div className="flex items-center gap-3">
-              <div className="w-12 h-12 rounded-full bg-white p-0.5 shadow-md border border-amber-400/50 flex items-center justify-center shrink-0 overflow-hidden">
-                <img
-                  src="/college-logo.svg"
-                  alt="Panchayat College, Baragada Official Emblem"
-                  className="w-full h-full object-contain"
-                  referrerPolicy="no-referrer"
-                />
-              </div>
+              <CollegeLogo className="w-12 h-12" />
               <div>
                 <h3 className="font-serif-academic text-base font-bold text-white tracking-wide">
                   Department of Mathematics

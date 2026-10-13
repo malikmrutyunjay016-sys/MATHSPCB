@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { Notice } from '../types';
+import { CollegeLogo } from './CollegeLogo';
 
 interface NavbarProps {
   activeTab: string;
@@ -23,6 +24,7 @@ interface NavbarProps {
   onOpenStudentPortal?: (mode?: 'register' | 'login') => void;
   marqueeText?: string;
   notices?: Notice[];
+  onOpenLogoEditor?: () => void;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
@@ -32,6 +34,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   onOpenStudentPortal,
   marqueeText,
   notices = [],
+  onOpenLogoEditor,
 }) => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const { user, isAdmin, signInWithGoogle, signOut, openAdminLoginModal } = useAuth();
@@ -336,14 +339,11 @@ export const Navbar: React.FC<NavbarProps> = ({
           className="flex items-center gap-3.5 cursor-pointer group"
         >
           {/* Official Emblem / College Logo */}
-          <div className="relative w-12 h-12 sm:w-14 sm:h-14 rounded-full bg-white shadow-md p-0.5 border-2 border-slate-300 group-hover:border-amber-500 group-hover:scale-105 transition-all duration-300 flex items-center justify-center shrink-0 overflow-hidden">
-            <img
-              src="/college-logo.svg"
-              alt="Panchayat College, Baragada Official Emblem"
-              className="w-full h-full object-contain"
-              referrerPolicy="no-referrer"
-            />
-          </div>
+          <CollegeLogo
+            className="w-12 h-12 sm:w-14 sm:h-14 transition-transform group-hover:scale-105"
+            onClick={onOpenLogoEditor}
+            title={isAdmin ? "Click to edit department logo" : "Department Emblem"}
+          />
 
           <div className="flex flex-col">
             <div className="flex items-center gap-2">

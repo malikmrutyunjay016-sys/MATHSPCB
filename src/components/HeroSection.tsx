@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import { Facility } from '../types';
 import { useAuth } from '../context/AuthContext';
+import { CollegeLogo } from './CollegeLogo';
 
 interface HeroSectionProps {
   onNavigate: (tabId: string) => void;
@@ -191,14 +192,7 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
           <div className="lg:col-span-7 space-y-6">
             {/* Academic Crest Icon Badge */}
             <div className="flex items-center gap-3">
-              <div className="w-14 h-14 rounded-full bg-white p-1 border-2 border-amber-400/60 shadow-xl flex items-center justify-center shrink-0 overflow-hidden">
-                <img
-                  src="/college-logo.svg"
-                  alt="Panchayat College, Baragada Official Emblem"
-                  className="w-full h-full object-contain"
-                  referrerPolicy="no-referrer"
-                />
-              </div>
+              <CollegeLogo className="w-14 h-14" />
               <div className="flex flex-col">
                 <span className="text-amber-400 text-xs font-bold tracking-widest uppercase">
                   {activeSlideData.badge}

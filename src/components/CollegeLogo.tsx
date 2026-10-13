@@ -4,6 +4,8 @@ interface CollegeLogoProps {
   className?: string;
   size?: number | string;
   showBorder?: boolean;
+  onClick?: () => void;
+  title?: string;
 }
 
 /**
@@ -21,16 +23,31 @@ interface CollegeLogoProps {
 export const CollegeLogo: React.FC<CollegeLogoProps> = ({
   className = 'w-10 h-10',
   showBorder = false,
+  onClick,
+  title,
 }) => {
+  let customLogoUrl = '';
+  try {
+    const saved = localStorage.getItem('dept_settings');
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      if (parsed.logoUrl) {
+        customLogoUrl = parsed.logoUrl;
+      }
+    }
+  } catch {}
+
   return (
     <div
+      onClick={onClick}
+      title={title}
       className={`relative inline-flex items-center justify-center shrink-0 ${
-        showBorder ? 'rounded-full ring-2 ring-amber-400/50 shadow-xs' : ''
-      } ${className}`}
+        showBorder ? 'ring-1 ring-amber-400/50 shadow-xs' : ''
+      } ${onClick ? 'cursor-pointer' : ''} ${className}`}
     >
       <img
-        src="/college-logo.svg"
-        alt="Panchayat College, Baragada Official Emblem"
+        src={customLogoUrl || "/college-logo.svg"}
+        alt="College Logo"
         className="w-full h-full object-contain"
         referrerPolicy="no-referrer"
       />

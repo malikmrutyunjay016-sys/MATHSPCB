@@ -166,6 +166,7 @@ export interface DepartmentSettings {
   studentPublicPrivacy: boolean; // if true, masks phone and address from public
   announcementMarquee: string;
   pyqUploadCode?: string; // Code for student question paper uploads (default 'Mathematics', editable by admin)
+  logoUrl?: string; // Custom logo URL or data URI
   adminId?: string;
   adminPassword?: string;
   updatedAt?: string;

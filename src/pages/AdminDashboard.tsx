@@ -297,6 +297,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     announcementMarquee: settings.announcementMarquee || '',
     studentPublicPrivacy: settings.studentPublicPrivacy ?? true,
     pyqUploadCode: settings.pyqUploadCode || 'Mathematics',
+    logoUrl: settings.logoUrl || '',
   });
 
   useEffect(() => {
@@ -2530,6 +2531,51 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                       placeholder="Text to display in the top announcement ticker..."
                       className="w-full p-2.5 rounded-lg border border-slate-200 text-xs bg-white"
                     />
+                  </div>
+
+                  <div className="bg-slate-50 p-5 rounded-xl border border-slate-200 space-y-3">
+                    <h3 className="font-bold text-slate-800 uppercase tracking-wider text-[11px]">
+                      Department Emblem / Logo (Change or Upload)
+                    </h3>
+                    <div className="flex items-center gap-4">
+                      <div className="w-14 h-14 bg-white border border-slate-300 p-1 flex items-center justify-center shrink-0">
+                        <img
+                          src={statsForm.logoUrl || '/college-logo.svg'}
+                          alt="Logo Preview"
+                          className="w-full h-full object-contain"
+                          referrerPolicy="no-referrer"
+                        />
+                      </div>
+                      <div className="flex-1 space-y-2">
+                        <input
+                          type="text"
+                          value={statsForm.logoUrl}
+                          onChange={(e) =>
+                            setStatsForm({ ...statsForm, logoUrl: e.target.value })
+                          }
+                          placeholder="Paste image URL (PNG, JPG, SVG)..."
+                          className="w-full p-2.5 rounded-lg border border-slate-200 text-xs bg-white"
+                        />
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={(e) => {
+                            const file = e.target.files?.[0];
+                            if (file) {
+                              const reader = new FileReader();
+                              reader.onload = (ev) => {
+                                setStatsForm({
+                                  ...statsForm,
+                                  logoUrl: ev.target?.result as string,
+                                });
+                              };
+                              reader.readAsDataURL(file);
+                            }
+                          }}
+                          className="text-xs text-slate-500 file:mr-4 file:py-1.5 file:px-3 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-amber-50 file:text-amber-700 hover:file:bg-amber-100 cursor-pointer"
+                        />
+                      </div>
+                    </div>
                   </div>
 
                   <div className="bg-slate-50 p-5 rounded-xl border border-slate-200 space-y-3">

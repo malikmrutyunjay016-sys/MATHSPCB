@@ -28,6 +28,7 @@ export const initialSettings: DepartmentSettings = {
   announcementMarquee:
     'Admissions open for B.Sc. (Hons) Mathematics 2026–27 | Sambalpur University Semester-IV Examination forms available at Department Office | National Mathematics Day Celebration Paper Submissions Open',
   pyqUploadCode: 'Mathematics',
+  logoUrl: '',
   adminId: 'Admin123',
   adminPassword: '762016',
   updatedAt: new Date().toISOString(),

@@ -129,6 +129,7 @@ import { testConnection } from './firebase/config';
 function AppContent() {
   const [activeTab, setActiveTab] = useState<string>('home');
   const {
+    isAdmin,
     isAdminLoginModalOpen,
     openAdminLoginModal,
     closeAdminLoginModal,
@@ -221,6 +222,10 @@ function AppContent() {
   });
 
   // Admin Modals state
+  const [logoModalOpen, setLogoModalOpen] = useState(false);
+  const [logoInputUrl, setLogoInputUrl] = useState('');
+  const [logoSuccessMsg, setLogoSuccessMsg] = useState('');
+
   const [deleteModal, setDeleteModal] = useState<{
     isOpen: boolean;
     title: string;
@@ -833,6 +838,14 @@ function AppContent() {
         }
         marqueeText={settings.announcementMarquee}
         notices={notices}
+        onOpenLogoEditor={() => {
+          if (isAdmin) {
+            setLogoInputUrl(settings.logoUrl || '');
+            setLogoModalOpen(true);
+          } else {
+            openAdminLoginModal();
+          }
+        }}
       />
 
       {/* Main View Router */}
@@ -1237,6 +1250,101 @@ function AppContent() {
         initialMode={adminModalMode}
         onLoginSuccess={() => setActiveTab('admin')}
       />
+
+      {/* Logo Edit Modal */}
+      {logoModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-xs animate-in fade-in duration-200">
+          <div className="bg-white rounded-2xl w-full max-w-lg shadow-2xl border border-slate-200 overflow-hidden flex flex-col">
+            <div className="bg-[#0b1a2f] text-white p-5 flex items-center justify-between border-b border-slate-800">
+              <h3 className="font-serif-academic text-lg font-bold">Edit Department Emblem / Logo</h3>
+              <button
+                onClick={() => setLogoModalOpen(false)}
+                className="p-1 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+            <div className="p-6 space-y-4">
+              <div className="flex items-center gap-4">
+                <div className="w-16 h-16 bg-white border border-slate-300 p-1 flex items-center justify-center shrink-0 shadow-xs">
+                  <img
+                    src={logoInputUrl || settings.logoUrl || '/college-logo.svg'}
+                    alt="Logo Preview"
+                    className="w-full h-full object-contain"
+                    referrerPolicy="no-referrer"
+                  />
+                </div>
+                <div className="flex-1 text-xs text-slate-600">
+                  <p className="font-bold text-slate-800 mb-1">Upload or URL</p>
+                  <p>Provide an image URL or upload a new image file to update the department logo across the website instantly.</p>
+                </div>
+              </div>
+
+              {logoSuccessMsg && (
+                <div className="p-3 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-lg text-xs font-semibold">
+                  {logoSuccessMsg}
+                </div>
+              )}
+
+              <div className="space-y-1">
+                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider">Logo Image URL</label>
+                <input
+                  type="text"
+                  value={logoInputUrl}
+                  onChange={(e) => setLogoInputUrl(e.target.value)}
+                  placeholder="https://example.com/logo.png..."
+                  className="w-full p-2.5 rounded-lg border border-slate-200 text-xs bg-white"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider">Or Upload Image File</label>
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) {
+                      const reader = new FileReader();
+                      reader.onload = (ev) => {
+                        setLogoInputUrl(ev.target?.result as string);
+                      };
+                      reader.readAsDataURL(file);
+                    }
+                  }}
+                  className="text-xs text-slate-500 file:mr-4 file:py-1.5 file:px-3 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-amber-50 file:text-amber-700 hover:file:bg-amber-100 cursor-pointer w-full"
+                />
+              </div>
+
+              <div className="pt-3 flex items-center justify-end gap-3 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => setLogoInputUrl('')}
+                  className="px-4 py-2 rounded-lg text-xs font-bold text-slate-600 hover:bg-slate-100 transition cursor-pointer"
+                >
+                  Reset Default
+                </button>
+                <button
+                  type="button"
+                  onClick={async () => {
+                    const updatedSettings = { ...settings, logoUrl: logoInputUrl };
+                    await updateDepartmentSettings(updatedSettings);
+                    setSettings(updatedSettings);
+                    setLogoSuccessMsg('Logo updated successfully!');
+                    setTimeout(() => {
+                      setLogoSuccessMsg('');
+                      setLogoModalOpen(false);
+                    }, 1200);
+                  }}
+                  className="px-5 py-2.5 rounded-lg bg-amber-500 hover:bg-amber-400 text-slate-950 text-xs font-bold transition shadow-xs cursor-pointer"
+                >
+                  Save Logo
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* PDF Viewer Modal */}
       <PDFModal

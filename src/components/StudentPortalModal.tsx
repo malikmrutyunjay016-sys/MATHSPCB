@@ -23,6 +23,7 @@ import {
   MapPin,
   Save,
 } from 'lucide-react';
+import { CollegeLogo } from './CollegeLogo';
 import { Student, StudentCredential } from '../types';
 import {
   registerNewStudentWithCredentials,
@@ -298,14 +299,7 @@ export const StudentPortalModal: React.FC<StudentPortalModalProps> = ({
         {/* Header */}
         <div className="bg-[#0b1a2f] text-white p-5 flex items-center justify-between border-b border-slate-800">
           <div className="flex items-center gap-3">
-            <div className="w-11 h-11 rounded-full bg-white p-0.5 border border-amber-400/50 flex items-center justify-center shrink-0 overflow-hidden shadow-sm">
-              <img
-                src="/college-logo.svg"
-                alt="Panchayat College, Baragada Official Emblem"
-                className="w-full h-full object-contain"
-                referrerPolicy="no-referrer"
-              />
-            </div>
+            <CollegeLogo className="w-11 h-11" />
             <div>
               <span className="text-[10px] uppercase font-bold tracking-widest text-amber-400 block">
                 Department of Mathematics • Panchayat College
