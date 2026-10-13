@@ -6,7 +6,6 @@ import {
   Search,
   BookOpen,
   Calendar,
-  FileQuestion,
   GraduationCap,
   Sparkles,
   ClipboardList,
@@ -21,18 +20,18 @@ import {
   X,
   File,
 } from 'lucide-react';
-import { DownloadItem, DownloadCategory, DownloadCourseBadge, QuestionPaper, Syllabus } from '../types';
+import { DownloadItem, DownloadCategory, DownloadCourseBadge, Syllabus } from '../types';
 import { initialDownloads } from '../data/initialData';
 import { useAuth } from '../context/AuthContext';
 import { saveDownloadItem, deleteDownloadItem } from '../services/db';
+import { detectFormatInfo, getSafeDownloadFilename, downloadFile } from '../utils/fileDownload';
 
 interface DownloadsPageProps {
   downloads?: DownloadItem[];
   onSaveDownload?: (item: DownloadItem) => Promise<void> | void;
   onDeleteDownload?: (id: string, title?: string) => Promise<void> | void;
   syllabuses?: Syllabus[];
-  questionPapers?: QuestionPaper[];
-  onViewPDF?: (title: string, url: string, category: string) => void;
+  onViewPDF?: (title: string, url: string, category: string, fileName?: string) => void;
   onNavigateToTab?: (tabId: string) => void;
 }
 
@@ -41,7 +40,6 @@ export const DownloadsPage: React.FC<DownloadsPageProps> = ({
   onSaveDownload,
   onDeleteDownload,
   syllabuses = [],
-  questionPapers = [],
   onViewPDF,
   onNavigateToTab,
 }) => {
@@ -56,7 +54,22 @@ export const DownloadsPage: React.FC<DownloadsPageProps> = ({
     return initialDownloads;
   });
 
-  const activeDownloadsList = propDownloads && propDownloads.length > 0 ? propDownloads : localDownloads;
+  const rawDownloadsList = propDownloads && propDownloads.length > 0 ? propDownloads : localDownloads;
+
+  // Strictly filter out any previous year question papers from downloads repository
+  const activeDownloadsList = useMemo(() => {
+    return rawDownloadsList.filter((item) => {
+      const isPYQ =
+        item.id.startsWith('pyq-') ||
+        item.category?.toLowerCase() === 'pyq' ||
+        item.category?.toLowerCase() === 'question paper' ||
+        item.category?.toLowerCase() === 'question papers' ||
+        item.title?.toLowerCase().includes('question paper') ||
+        item.title?.toLowerCase().includes('previous year question') ||
+        item.description?.toLowerCase().includes('examination paper');
+      return !isPYQ;
+    });
+  }, [rawDownloadsList]);
 
   // Search & Filter state
   const [searchTerm, setSearchTerm] = useState('');
@@ -84,7 +97,7 @@ export const DownloadsPage: React.FC<DownloadsPageProps> = ({
   const [formIsImportant, setFormIsImportant] = useState(false);
   const [formUploadFileName, setFormUploadFileName] = useState('');
 
-  // Combined downloadable list
+  // Combined downloadable list: strictly official downloads and syllabi (NO previous year questions)
   const allItems = useMemo(() => {
     const list = [...activeDownloadsList];
 
@@ -106,25 +119,8 @@ export const DownloadsPage: React.FC<DownloadsPageProps> = ({
       }
     });
 
-    // Add sample question papers if not present
-    questionPapers.slice(0, 6).forEach((p) => {
-      if (!list.some((item) => item.id === `pyq-${p.id}`)) {
-        list.push({
-          id: `pyq-${p.id}`,
-          title: `${p.title} (${p.paperCode})`,
-          code: p.paperCode,
-          category: 'Routine',
-          courseBadge: p.course?.includes('PG') ? 'PG' : 'UG NEP',
-          session: p.academicYear,
-          fileSize: p.fileSize || '380 KB',
-          description: `Official Sambalpur University semester examination paper (${p.semester || 'Semester VI'}).`,
-          fileUrl: p.fileUrl || '/pyq/default.pdf',
-        });
-      }
-    });
-
     return list;
-  }, [activeDownloadsList, syllabuses, questionPapers]);
+  }, [activeDownloadsList, syllabuses]);
 
   // Filtered downloads
   const filteredItems = useMemo(() => {
@@ -157,20 +153,10 @@ export const DownloadsPage: React.FC<DownloadsPageProps> = ({
     setTimeout(() => setAlertNotice(null), 4000);
   };
 
-  const handleDownloadFile = (item: DownloadItem) => {
-    showToast(`Downloading: ${item.title}`, 'info');
-
-    if (onViewPDF && (item.fileUrl.endsWith('.pdf') || item.fileUrl.startsWith('data:application/pdf'))) {
-      onViewPDF(item.title, item.fileUrl, item.category);
-    } else {
-      const link = document.createElement('a');
-      link.href = item.fileUrl || '#';
-      link.download = `${item.title.replace(/[^a-zA-Z0-9]/g, '_')}.pdf`;
-      link.target = '_blank';
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-    }
+  const handleDownloadFile = async (item: DownloadItem) => {
+    const filename = getSafeDownloadFilename(item.title, item.fileUrl, item.fileName);
+    showToast(`Downloading: ${filename}`, 'info');
+    await downloadFile(item.fileUrl, filename);
   };
 
   // Open Edit Modal for an existing item
@@ -186,7 +172,7 @@ export const DownloadsPage: React.FC<DownloadsPageProps> = ({
     setFormDescription(item.description || '');
     setFormFileUrl(item.fileUrl || '');
     setFormIsImportant(Boolean(item.isImportant));
-    setFormUploadFileName('');
+    setFormUploadFileName(item.fileName || '');
     setIsEditModalOpen(true);
   };
 
@@ -244,6 +230,7 @@ export const DownloadsPage: React.FC<DownloadsPageProps> = ({
     setIsSaving(true);
     try {
       const itemId = editingItem ? editingItem.id : `dl-${Date.now()}`;
+      const formatInfo = detectFormatInfo(formFileUrl, formUploadFileName || editingItem?.fileName);
       const updatedItem: DownloadItem = {
         id: itemId,
         title: formTitle.trim(),
@@ -254,6 +241,8 @@ export const DownloadsPage: React.FC<DownloadsPageProps> = ({
         fileSize: formFileSize.trim() || '1.0 MB',
         description: formDescription.trim(),
         fileUrl: formFileUrl.trim() || '/documents/Department_Resource.pdf',
+        fileName: formUploadFileName.trim() || editingItem?.fileName || `${formTitle.trim().replace(/\s+/g, '_')}${formatInfo.extension}`,
+        fileFormat: formatInfo.extension,
         isImportant: formIsImportant,
         updatedAt: new Date().toISOString(),
         createdAt: editingItem?.createdAt || new Date().toISOString(),
@@ -355,21 +344,11 @@ export const DownloadsPage: React.FC<DownloadsPageProps> = ({
                 Downloads & Academic Resources
               </h1>
               <p className="text-xs sm:text-sm text-slate-600 max-w-2xl mt-1.5 leading-relaxed">
-                Official Sambalpur University syllabi, departmental class routines, previous year question paper archives, academic calendar, and downloadable student proformas.
+                Official Sambalpur University syllabi, departmental class routines, academic calendar, and downloadable student proformas.
               </p>
             </div>
 
             <div className="flex items-center gap-2">
-              {onNavigateToTab && (
-                <button
-                  type="button"
-                  onClick={() => onNavigateToTab('pyq')}
-                  className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-semibold flex items-center gap-1.5 transition shadow-xs cursor-pointer"
-                >
-                  <FileQuestion className="w-4 h-4 text-amber-400" />
-                  <span>Question Papers</span>
-                </button>
-              )}
               {onNavigateToTab && (
                 <button
                   type="button"
@@ -418,7 +397,7 @@ export const DownloadsPage: React.FC<DownloadsPageProps> = ({
                 type="text"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                placeholder="Search syllabi, forms, routines, paper codes..."
+                placeholder="Search syllabi, forms, routines, calendars..."
                 className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs sm:text-sm text-slate-800 placeholder-slate-400 focus:outline-hidden focus:border-amber-500 focus:ring-1 focus:ring-amber-500"
               />
               {searchTerm && (
@@ -592,15 +571,25 @@ export const DownloadsPage: React.FC<DownloadsPageProps> = ({
                 <div className="pt-4 border-t border-slate-100 mt-4 space-y-2.5">
                   {/* Public Action row */}
                   <div className="flex items-center justify-between gap-2">
-                    <span className="text-[10px] font-semibold text-slate-400">
-                      {item.category} Document
-                    </span>
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-[10px] font-semibold text-slate-400">
+                        {item.category}
+                      </span>
+                      {(() => {
+                        const fmt = detectFormatInfo(item.fileUrl, item.fileName);
+                        return (
+                          <span className="text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-slate-100 text-slate-600 border border-slate-200">
+                            {fmt.extension.replace('.', '')}
+                          </span>
+                        );
+                      })()}
+                    </div>
 
                     <div className="flex items-center gap-1.5">
                       {onViewPDF && (
                         <button
                           type="button"
-                          onClick={() => onViewPDF(item.title, item.fileUrl, item.category)}
+                          onClick={() => onViewPDF(item.title, item.fileUrl, item.category, item.fileName)}
                           className="px-2.5 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold flex items-center gap-1 transition cursor-pointer"
                           title="View Document Preview"
                         >
@@ -613,6 +602,7 @@ export const DownloadsPage: React.FC<DownloadsPageProps> = ({
                         type="button"
                         onClick={() => handleDownloadFile(item)}
                         className="px-3 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-400 text-slate-950 text-xs font-bold flex items-center gap-1.5 transition shadow-xs cursor-pointer"
+                        title="Download file in uploaded format"
                       >
                         <Download className="w-3.5 h-3.5" />
                         <span>Download</span>

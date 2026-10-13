@@ -22,6 +22,7 @@ import {
 } from 'lucide-react';
 import { Syllabus, SyllabusCategory } from '../types';
 import { useAuth } from '../context/AuthContext';
+import { getSafeDownloadFilename, downloadFile } from '../utils/fileDownload';
 
 interface SyllabusPageProps {
   syllabuses: Syllabus[];
@@ -29,7 +30,7 @@ interface SyllabusPageProps {
   onEditSyllabus: (syllabus: Syllabus) => void;
   onDeleteSyllabus: (id: string, title: string) => void;
   onSaveSyllabus?: (syllabus: Syllabus) => void;
-  onViewPDF?: (title: string, url: string, category: string) => void;
+  onViewPDF?: (title: string, url: string, category: string, fileName?: string) => void;
 }
 
 export const SyllabusPage: React.FC<SyllabusPageProps> = ({
@@ -936,7 +937,7 @@ export const SyllabusPage: React.FC<SyllabusPageProps> = ({
                                         ? `PG Syllabus (Batch ${itemBatch})`
                                         : `${item.course} ${itemCat} Syllabus (Batch ${itemBatch})`;
                                       if (onViewPDF) {
-                                        onViewPDF(modalTitle, item.fileUrl!, 'Syllabus');
+                                        onViewPDF(modalTitle, item.fileUrl!, 'Syllabus', item.fileName);
                                       } else {
                                         window.open(item.fileUrl, '_blank');
                                       }
@@ -949,14 +950,20 @@ export const SyllabusPage: React.FC<SyllabusPageProps> = ({
                                 )}
 
                                 {item.fileUrl && (
-                                  <a
-                                    href={item.fileUrl}
-                                    download={item.fileName || `${item.course}_Syllabus.pdf`}
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      const modalTitle = isPgItem
+                                        ? `PG Syllabus (Batch ${itemBatch})`
+                                        : `${item.course} ${itemCat} Syllabus (Batch ${itemBatch})`;
+                                      const downloadName = getSafeDownloadFilename(item.fileName || modalTitle, item.fileUrl!, item.fileName);
+                                      downloadFile(item.fileUrl!, downloadName);
+                                    }}
                                     className="p-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs transition cursor-pointer"
-                                    title="Download PDF Document"
+                                    title="Download Syllabus in original format"
                                   >
                                     <Download className="w-3.5 h-3.5" />
-                                  </a>
+                                  </button>
                                 )}
                               </div>
                             )}

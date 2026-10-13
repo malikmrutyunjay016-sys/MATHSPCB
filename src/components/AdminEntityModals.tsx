@@ -939,14 +939,26 @@ export const NoticeModal: React.FC<{
           canvas.width = width;
           canvas.height = height;
           const ctx = canvas.getContext('2d');
+          // If already within 350 KB limit, preserve original image data and format untouched
+          if (originalKb <= 350) {
+            setForm((prev) => ({
+              ...prev,
+              attachmentUrl: event.target?.result as string,
+              attachmentName: file.name,
+            }));
+            setUploadStatus(`✓ Photo attached in original format (${file.name}): ${originalKb} KB.`);
+            setIsProcessingFile(false);
+            return;
+          }
+
+          const outputMime = file.type === 'image/webp' ? 'image/webp' : 'image/jpeg';
           if (!ctx) {
             setUploadError('Failed to initialize canvas for image compression.');
             setIsProcessingFile(false);
             return;
           }
-
           ctx.drawImage(img, 0, 0, width, height);
-          let dataUrl = canvas.toDataURL('image/jpeg', quality);
+          let dataUrl = canvas.toDataURL(outputMime, quality);
           let byteSize = Math.round((dataUrl.length * 3) / 4);
 
           // Compress down iteratively until <= 350 KB

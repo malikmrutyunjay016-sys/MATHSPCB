@@ -94,6 +94,8 @@ export interface QuestionPaper {
   yearLevel: string; // "1st Year", "2nd Year", "3rd Year"
   examination: string; // "Mid-Term Examination", "Semester End Examination"
   fileUrl: string;
+  fileName?: string; // Original uploaded file name
+  fileFormat?: string; // Original file extension / format (e.g. .pdf, .jpg, .png, .docx)
   fileSize?: string;
   uploadedByRole?: 'admin' | 'student';
   uploaderName?: string; // Name of uploading student (omitted or masked if uploaded by admin)
@@ -263,6 +265,8 @@ export interface DownloadItem {
   fileSize: string;
   description: string;
   fileUrl: string;
+  fileName?: string; // Original uploaded file name
+  fileFormat?: string; // Original file extension / format (e.g. .pdf, .jpg, .png, .docx)
   isImportant?: boolean;
   createdAt?: string;
   updatedAt?: string;

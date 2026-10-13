@@ -1353,7 +1353,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                   onSaveDownload={onSaveDownload}
                   onDeleteDownload={onDeleteDownload}
                   syllabuses={syllabuses}
-                  questionPapers={pyq}
                 />
               </div>
             )}

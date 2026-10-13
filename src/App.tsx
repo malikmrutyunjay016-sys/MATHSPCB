@@ -213,6 +213,7 @@ function AppContent() {
     title: string;
     category?: string;
     fileUrl?: string;
+    fileName?: string;
     metadata?: any;
   }>({
     isOpen: false,
@@ -422,9 +423,12 @@ function AppContent() {
       title: notice.title,
       category: notice.category,
       fileUrl: notice.attachmentUrl,
+      fileName: notice.attachmentName,
       metadata: {
         date: notice.date,
         size: '1.2 MB',
+        fileName: notice.attachmentName,
+        originalFileName: notice.attachmentName,
       },
     });
   };
@@ -435,12 +439,15 @@ function AppContent() {
       title: `${paper.title} (${paper.paperCode})`,
       category: 'Previous Year Question Paper',
       fileUrl: paper.fileUrl,
+      fileName: paper.fileName,
       metadata: {
         course: paper.course || 'UG',
         academicYear: paper.academicYear,
         semester: paper.semester,
         paperCode: paper.paperCode,
         size: paper.fileSize || '350 KB',
+        fileName: paper.fileName,
+        originalFileName: paper.fileName,
         uploadedByRole: paper.uploadedByRole,
         uploaderName: paper.uploaderName,
         uploaderBatch: paper.uploaderBatch,
@@ -924,12 +931,16 @@ function AppContent() {
             }
             onEditSyllabus={(s) => setSyllabusModal({ isOpen: true, item: s })}
             onDeleteSyllabus={handleDeleteSyllabus}
-            onViewPDF={(title, url, category) =>
+            onViewPDF={(title, url, category, fileName) =>
               setPdfModalData({
                 isOpen: true,
                 title,
                 category,
                 fileUrl: url,
+                fileName,
+                metadata: {
+                  fileName,
+                },
               })
             }
           />
@@ -1031,13 +1042,16 @@ function AppContent() {
             onSaveDownload={handleSaveDownload}
             onDeleteDownload={(id, title) => handleDeleteDownload(id, title)}
             syllabuses={syllabuses}
-            questionPapers={pyq}
-            onViewPDF={(title, url, category) =>
+            onViewPDF={(title, url, category, fileName) =>
               setPdfModalData({
                 isOpen: true,
                 title,
                 category,
                 fileUrl: url,
+                fileName,
+                metadata: {
+                  fileName,
+                },
               })
             }
             onNavigateToTab={setActiveTab}
@@ -1226,6 +1240,7 @@ function AppContent() {
         title={pdfModalData.title}
         category={pdfModalData.category}
         fileUrl={pdfModalData.fileUrl}
+        fileName={pdfModalData.fileName}
         metadata={pdfModalData.metadata}
       />
 

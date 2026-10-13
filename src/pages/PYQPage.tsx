@@ -30,6 +30,7 @@ import {
 import { QuestionPaper, DepartmentSettings, Student, StudentCredential } from '../types';
 import { useAuth } from '../context/AuthContext';
 import { loginStudentPortal, updateDepartmentSettings } from '../services/db';
+import { detectFormatInfo, getSafeDownloadFilename, downloadFile } from '../utils/fileDownload';
 
 interface PYQPageProps {
   papers: QuestionPaper[];
@@ -136,6 +137,7 @@ export const PYQPage: React.FC<PYQPageProps> = ({
   const [paperYearLevel, setPaperYearLevel] = useState('1st Year');
   const [paperExamination, setPaperExamination] = useState('Semester End Examination (CBCS)');
   const [paperFileUrl, setPaperFileUrl] = useState('https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf');
+  const [paperFileName, setPaperFileName] = useState('');
   const [paperFileSize, setPaperFileSize] = useState('320 KB');
   const [fileCompressionNotice, setFileCompressionNotice] = useState('');
   const [fileUploadError, setFileUploadError] = useState('');
@@ -320,6 +322,7 @@ export const PYQPage: React.FC<PYQPageProps> = ({
     const file = e.target.files?.[0];
     if (!file) return;
 
+    setPaperFileName(file.name);
     setFileCompressionNotice('');
     setFileUploadError('');
     const MAX_SIZE_BYTES = 500 * 1024; // 500 KB
@@ -429,6 +432,7 @@ export const PYQPage: React.FC<PYQPageProps> = ({
       // User rules:
       // - Admin: role is 'admin', uploaderName is NOT shown (undefined), uploaderBatch is undefined.
       // - Student: role is 'student', show student name and admission batch to the public!
+      const format = detectFormatInfo(paperFileUrl.trim(), paperFileName);
       const newPaper: QuestionPaper = {
         id: newId,
         title: paperTitle.trim(),
@@ -440,6 +444,8 @@ export const PYQPage: React.FC<PYQPageProps> = ({
         yearLevel: paperYearLevel,
         examination: paperExamination.trim(),
         fileUrl: paperFileUrl.trim(),
+        fileName: paperFileName || `${paperCode.trim().toUpperCase()}_${paperAcademicYear}${format.extension}`,
+        fileFormat: format.extension,
         fileSize: paperFileSize || '350 KB',
         uploadedByRole: isAdmin ? 'admin' : 'student',
         uploaderName: isAdmin ? undefined : studentData?.name,
@@ -1411,21 +1417,28 @@ export const PYQPage: React.FC<PYQPageProps> = ({
                         <button
                           onClick={() => onSelectPaper(paper)}
                           className="px-3.5 py-1.5 rounded-lg bg-[#0c2340] hover:bg-blue-950 text-white text-xs font-bold flex items-center gap-1.5 transition cursor-pointer"
-                          title="View Question Paper PDF Online"
+                          title="View Question Paper Online"
                         >
                           <Eye className="w-3.5 h-3.5" />
-                          <span>View PDF</span>
+                          <span>View</span>
                         </button>
 
-                        <a
-                          href={paper.fileUrl}
-                          download={`${paper.paperCode || 'Question_Paper'}_${paper.academicYear || ''}.pdf`}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const filename = getSafeDownloadFilename(
+                              paper.fileName || `${paper.paperCode || 'Question_Paper'}_${paper.academicYear || ''}`,
+                              paper.fileUrl,
+                              paper.fileName
+                            );
+                            downloadFile(paper.fileUrl, filename);
+                          }}
                           className="px-3.5 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-400 text-slate-950 text-xs font-bold flex items-center gap-1.5 transition cursor-pointer shadow-2xs"
-                          title="Download Question Paper PDF"
+                          title="Download Question Paper in uploaded format"
                         >
                           <Download className="w-3.5 h-3.5" />
                           <span>Download</span>
-                        </a>
+                        </button>
                       </div>
 
                       {isAdmin && (

@@ -1,5 +1,6 @@
 import React from 'react';
 import { X, Download, FileText, ExternalLink, Printer, CheckCircle, Image as ImageIcon } from 'lucide-react';
+import { detectFormatInfo, getSafeDownloadFilename, downloadFile } from '../utils/fileDownload';
 
 interface PDFModalProps {
   isOpen: boolean;
@@ -7,6 +8,7 @@ interface PDFModalProps {
   title: string;
   category?: string;
   fileUrl?: string;
+  fileName?: string;
   metadata?: {
     course?: string;
     academicYear?: string;
@@ -14,6 +16,8 @@ interface PDFModalProps {
     paperCode?: string;
     date?: string;
     size?: string;
+    fileName?: string;
+    originalFileName?: string;
     uploadedByRole?: 'admin' | 'student';
     uploaderName?: string;
     uploaderBatch?: string;
@@ -26,6 +30,7 @@ export const PDFModal: React.FC<PDFModalProps> = ({
   title,
   category = 'Document',
   fileUrl,
+  fileName,
   metadata,
 }) => {
   if (!isOpen) return null;
@@ -33,9 +38,15 @@ export const PDFModal: React.FC<PDFModalProps> = ({
   const samplePdf =
     fileUrl || 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf';
 
-  const isImage =
-    samplePdf.startsWith('data:image/') ||
-    Boolean(samplePdf.match(/\.(jpeg|jpg|png|webp|gif|svg)($|\?)/i));
+  const effectiveFileName = fileName || metadata?.fileName || metadata?.originalFileName;
+  const formatInfo = detectFormatInfo(samplePdf, effectiveFileName);
+  const isImage = formatInfo.isImage;
+  const downloadFileName = getSafeDownloadFilename(title, samplePdf, effectiveFileName);
+
+  const handleDownload = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    await downloadFile(samplePdf, downloadFileName);
+  };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-xs animate-in fade-in duration-200">
@@ -161,14 +172,19 @@ export const PDFModal: React.FC<PDFModalProps> = ({
               <span>Open in New Window</span>
             </a>
 
-            <a
-              href={samplePdf}
-              download={title || (isImage ? 'notice_photo.jpg' : 'document.pdf')}
-              className="px-4 py-2 rounded-lg bg-amber-500 hover:bg-amber-400 text-slate-950 text-xs font-bold flex items-center gap-1.5 transition shadow-xs"
+            <button
+              type="button"
+              onClick={handleDownload}
+              className="px-4 py-2 rounded-lg bg-amber-500 hover:bg-amber-400 text-slate-950 text-xs font-bold flex items-center gap-1.5 transition shadow-xs cursor-pointer"
+              title={`Download in original format (${formatInfo.extension})`}
             >
               <Download className="w-3.5 h-3.5" />
-              <span>{isImage ? 'Download Photo' : 'Download PDF'}</span>
-            </a>
+              <span>
+                {isImage
+                  ? `Download Photo (${formatInfo.extension.replace('.', '').toUpperCase()})`
+                  : `Download Document (${formatInfo.extension.replace('.', '').toUpperCase()})`}
+              </span>
+            </button>
           </div>
         </div>
       </div>
