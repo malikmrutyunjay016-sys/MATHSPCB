@@ -115,6 +115,7 @@ export interface Notice {
   attachmentName?: string;
   isImportant?: boolean;
   isArchived?: boolean;
+  isDoingNow?: boolean;
   createdAt?: string;
   updatedAt?: string;
 }

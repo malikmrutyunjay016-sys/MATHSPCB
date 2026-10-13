@@ -40,6 +40,7 @@ interface HomePageProps {
   onDeleteFacility?: (id: string, name: string) => void;
   onSelectNoticePDF: (notice: Notice) => void;
   onOpenFAQModal: () => void;
+  onSaveNotice?: (notice: Notice) => void;
 }
 
 export const HomePage: React.FC<HomePageProps> = ({
@@ -55,6 +56,7 @@ export const HomePage: React.FC<HomePageProps> = ({
   onDeleteFacility,
   onSelectNoticePDF,
   onOpenFAQModal,
+  onSaveNotice,
 }) => {
   const { isAdmin } = useAuth();
 
@@ -198,6 +200,9 @@ export const HomePage: React.FC<HomePageProps> = ({
         notices={notices}
         onNavigate={onNavigate}
         onSelectNoticePDF={onSelectNoticePDF}
+        isAdmin={isAdmin}
+        onSaveNotice={onSaveNotice}
+        faculty={faculty}
       />
     </div>
   );

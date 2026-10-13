@@ -830,6 +830,19 @@ function AppContent() {
     setNotices((prev) => prev.map((n) => (n.id === notice.id ? updated : n)));
   };
 
+  const handleSaveNotice = async (notice: Notice) => {
+    await saveNotice(notice);
+    setNotices((prev) => {
+      const idx = prev.findIndex((n) => n.id === notice.id);
+      if (idx >= 0) {
+        const copy = [...prev];
+        copy[idx] = notice;
+        return copy;
+      }
+      return [notice, ...prev];
+    });
+  };
+
   return (
     <div className="min-h-screen flex flex-col bg-[#f8fafc]">
       {/* Navigation Bar */}
@@ -866,6 +879,7 @@ function AppContent() {
             onDeleteFacility={handleDeleteFacility}
             onSelectNoticePDF={openNoticePDF}
             onOpenFAQModal={() => setFaqModalOpen(true)}
+            onSaveNotice={handleSaveNotice}
           />
         )}
 
