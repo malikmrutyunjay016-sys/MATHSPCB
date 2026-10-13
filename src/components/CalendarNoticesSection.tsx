@@ -51,6 +51,8 @@ const facultyColors = [
   { bg: 'bg-amber-950', text: 'text-amber-300', border: 'border-amber-700', badge: 'bg-amber-600 text-slate-950' },
 ];
 
+const facultyColorHexes = ['#9333ea', '#0d9488', '#4f46e5', '#e11d48', '#0891b2', '#d97706'];
+
 const getFacultyColor = (name: string, facultyList: Faculty[] = []) => {
   const index = facultyList.findIndex((f) => f.name === name);
   const colorIndex =
@@ -58,6 +60,11 @@ const getFacultyColor = (name: string, facultyList: Faculty[] = []) => {
       ? index % facultyColors.length
       : Math.abs(name.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0)) % facultyColors.length;
   return facultyColors[colorIndex];
+};
+
+const getFacultyHex = (name: string, facultyList: Faculty[] = []) => {
+  const index = facultyList.findIndex((f) => f.name === name);
+  return index >= 0 ? facultyColorHexes[index % facultyColorHexes.length] : '#9333ea';
 };
 
 export const CalendarNoticesSection: React.FC<CalendarNoticesSectionProps> = ({
@@ -174,7 +181,6 @@ export const CalendarNoticesSection: React.FC<CalendarNoticesSectionProps> = ({
     events
       .filter((e) => e.year === year && e.month === month && e.day === day)
       .forEach((e) => {
-        // Faculty leaves are strictly visible ONLY to admin
         if (e.source === 'faculty-leave' && !isAdmin) return;
         if (!list.some((l) => l.title === e.title && l.facultyName === e.facultyName)) {
           list.push({
@@ -196,7 +202,6 @@ export const CalendarNoticesSection: React.FC<CalendarNoticesSectionProps> = ({
     e.preventDefault();
     if (!leaveFacultyName) return;
 
-    // Parse date or date range in dd/mm/yyyy format
     const rangeMatch = leaveDateRangeText.match(
       /\b([0-3]?[0-9])\/([0-1]?[0-9])\/(\d{4})\s+(?:to|\-)\s+([0-3]?[0-9])\/([0-1]?[0-9])\/(\d{4})\b/i
     );
@@ -311,7 +316,9 @@ export const CalendarNoticesSection: React.FC<CalendarNoticesSectionProps> = ({
 
           let title = line.substring(0, line.indexOf(dateMatch[0])).trim();
           title = title.replace(/[\-\:\,\s]+$/, '').trim();
-          if (!title) title = 'Holiday';
+          if (!title) {
+            title = 'Holiday';
+          }
 
           parsedEvents.push({
             id: `parsed-${year}-${month}-${day}-${Math.random()}`,
@@ -520,31 +527,64 @@ export const CalendarNoticesSection: React.FC<CalendarNoticesSectionProps> = ({
                   const eventsList = getEventsForDay(day);
                   const hasEvents = eventsList.length > 0;
                   const isSelected = selectedDay === day;
-                  const hasFacultyLeave = isAdmin && eventsList.some((e) => e.source === 'faculty-leave');
+                  const facultyLeavesToday = isAdmin ? eventsList.filter((e) => e.source === 'faculty-leave' && e.facultyName) : [];
+                  const hasFacultyLeave = facultyLeavesToday.length > 0;
+
+                  let buttonStyle: React.CSSProperties = {};
+                  let buttonClassName = '';
+
+                  if (isSelected) {
+                    buttonClassName = holiday ? 'bg-emerald-600 text-white ring-2 ring-white font-bold scale-105 shadow-md' : 'bg-amber-400 text-slate-950 ring-2 ring-white font-bold scale-105 shadow-md';
+                  } else if (hasFacultyLeave) {
+                    if (facultyLeavesToday.length === 1) {
+                      const hex = getFacultyHex(facultyLeavesToday[0].facultyName!, faculty);
+                      buttonStyle = {
+                        borderColor: hex,
+                        borderWidth: '2px',
+                        backgroundColor: `${hex}22`,
+                      };
+                      buttonClassName = 'text-white font-bold';
+                    } else {
+                      // 2 or more faculty on leave on the same day: divide the box diagonally (upper half first person, lower half second person)
+                      const hex1 = getFacultyHex(facultyLeavesToday[0].facultyName!, faculty);
+                      const hex2 = getFacultyHex(facultyLeavesToday[1].facultyName!, faculty);
+                      buttonStyle = {
+                        backgroundImage: `linear-gradient(135deg, ${hex1} 50%, ${hex2} 50%)`,
+                        borderWidth: '2px',
+                        borderColor: hex1,
+                      };
+                      buttonClassName = 'text-white font-bold shadow-md';
+                    }
+                  } else if (holiday) {
+                    buttonClassName = 'bg-emerald-950/80 text-emerald-300 border border-emerald-800/60 font-bold hover:bg-emerald-900/80';
+                  } else if (hasEvents) {
+                    buttonClassName = 'text-white bg-slate-800/80 hover:bg-slate-700 font-semibold';
+                  } else {
+                    buttonClassName = 'text-slate-400 hover:bg-slate-800/50 hover:text-slate-200';
+                  }
 
                   return (
                     <button
                       key={day}
                       onClick={() => setSelectedDay(day)}
-                      className={`relative py-2.5 text-xs sm:text-sm rounded-lg transition cursor-pointer flex flex-col items-center justify-center ${
-                        isSelected
-                          ? 'ring-2 ring-white font-bold scale-105 shadow-md ' +
-                            (holiday ? 'bg-emerald-600 text-white' : 'bg-amber-400 text-slate-950')
-                          : hasFacultyLeave
-                          ? 'bg-purple-950 text-purple-200 border border-purple-600 font-bold'
-                          : holiday
-                          ? 'bg-emerald-950/80 text-emerald-300 border border-emerald-800/60 font-bold hover:bg-emerald-900/80'
-                          : hasEvents
-                          ? 'text-white bg-slate-800/80 hover:bg-slate-700 font-semibold'
-                          : 'text-slate-400 hover:bg-slate-800/50 hover:text-slate-200'
-                      }`}
+                      style={buttonStyle}
+                      className={`relative py-2.5 text-xs sm:text-sm rounded-lg transition cursor-pointer flex flex-col items-center justify-center ${buttonClassName}`}
                     >
                       <span>{day}</span>
                       {holiday && !isSelected && !hasFacultyLeave && (
                         <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 absolute bottom-1"></span>
                       )}
                       {hasFacultyLeave && !isSelected && (
-                        <span className="w-1.5 h-1.5 rounded-full bg-purple-400 absolute bottom-1"></span>
+                        <div className="absolute bottom-1 flex items-center gap-0.5">
+                          {facultyLeavesToday.map((fl, idx) => (
+                            <span
+                              key={idx}
+                              className="w-1.5 h-1.5 rounded-full"
+                              style={{ backgroundColor: getFacultyHex(fl.facultyName!, faculty) }}
+                              title={`${fl.facultyName} on ${fl.leaveType}`}
+                            />
+                          ))}
+                        </div>
                       )}
                     </button>
                   );
@@ -569,18 +609,14 @@ export const CalendarNoticesSection: React.FC<CalendarNoticesSectionProps> = ({
                   {getEventsForDay(selectedDay).map((ev, idx) => {
                     const isLeave = ev.source === 'faculty-leave';
                     const facultyColor = isLeave && ev.facultyName ? getFacultyColor(ev.facultyName, faculty) : null;
+                    const facultyHex = isLeave && ev.facultyName ? getFacultyHex(ev.facultyName, faculty) : '#9333ea';
 
                     return (
                       <li key={idx} className="flex items-center justify-between font-semibold">
                         <div className="flex items-center gap-2">
                           <span
-                            className={`w-1.5 h-1.5 rounded-full ${
-                              isLeave
-                                ? 'bg-purple-400'
-                                : ev.isHoliday
-                                ? 'bg-emerald-400'
-                                : 'bg-amber-400'
-                            }`}
+                            className="w-2 h-2 rounded-full"
+                            style={{ backgroundColor: isLeave ? facultyHex : ev.isHoliday ? '#34d399' : '#fbbf24' }}
                           />
                           <span
                             className={
@@ -825,7 +861,7 @@ export const CalendarNoticesSection: React.FC<CalendarNoticesSectionProps> = ({
                     required
                   />
                   <p className="text-[11px] text-slate-400">
-                    Faculty leaves are private and visible <b>only to admin</b>. Each faculty member is assigned a distinct color.
+                    Faculty leaves are private and visible <b>only to admin</b>. If multiple faculty are on leave on the same day, the date box divides into their respective colors.
                   </p>
                 </div>
 

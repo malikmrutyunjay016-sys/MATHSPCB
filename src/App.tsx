@@ -124,10 +124,19 @@ import {
   saveDownloadItem,
   deleteDownloadItem,
 } from './services/db';
-import { testConnection } from './firebase/config';
+import { testConnection, subscribeToQuotaExceeded } from './firebase/config';
 
 function AppContent() {
   const [activeTab, setActiveTab] = useState<string>('home');
+  const [quotaExceededInfo, setQuotaExceededInfo] = useState<{ isExceeded: boolean; upgradeUrl: string } | null>(null);
+
+  useEffect(() => {
+    const unsub = subscribeToQuotaExceeded((isExceeded, upgradeUrl) => {
+      setQuotaExceededInfo({ isExceeded, upgradeUrl });
+    });
+    return () => unsub();
+  }, []);
+
   const handleNavigate = (tab: string) => {
     setActiveTab(tab);
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -845,6 +854,22 @@ function AppContent() {
 
   return (
     <div className="min-h-screen flex flex-col bg-[#f8fafc]">
+      {quotaExceededInfo?.isExceeded && (
+        <div className="bg-amber-600 text-white px-4 py-2 text-xs md:text-sm font-medium flex items-center justify-between shadow-md z-50">
+          <div className="flex items-center space-x-2">
+            <span className="font-bold uppercase tracking-wider bg-amber-800 px-2 py-0.5 rounded text-[10px]">Notice</span>
+            <span>Firestore daily free quota limit reached. App is running seamlessly on local storage cache.</span>
+          </div>
+          <a
+            href={quotaExceededInfo.upgradeUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="underline font-semibold hover:text-amber-100 transition flex items-center space-x-1 shrink-0 ml-2"
+          >
+            <span>Firebase Console</span>
+          </a>
+        </div>
+      )}
       {/* Navigation Bar */}
       <Navbar
         activeTab={activeTab}

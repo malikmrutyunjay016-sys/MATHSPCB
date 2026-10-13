@@ -389,15 +389,39 @@ export async function restoreAllDataToFirestore(
     }
   }
 
+  // Always sync restored data into localStorage so local offline state updates immediately
+  try {
+    if (d.settings) localStorage.setItem('dept_settings', JSON.stringify(d.settings));
+    if (d.credentials) localStorage.setItem('student_credentials', JSON.stringify(d.credentials));
+    if (d.faculty) localStorage.setItem('dept_faculty', JSON.stringify(d.faculty));
+    if (d.students) localStorage.setItem('dept_students', JSON.stringify(d.students));
+    if (d.syllabuses) localStorage.setItem('dept_syllabuses', JSON.stringify(d.syllabuses));
+    if (d.timeTable) localStorage.setItem('dept_timetables', JSON.stringify(d.timeTable));
+    if (d.pyq) localStorage.setItem('dept_pyq', JSON.stringify(d.pyq));
+    if (d.books) localStorage.setItem('dept_books', JSON.stringify(d.books));
+    if (d.facilities) localStorage.setItem('dept_facilities', JSON.stringify(d.facilities));
+    if (d.galleryPhotos) localStorage.setItem('dept_gallery', JSON.stringify(d.galleryPhotos));
+    if (d.notices) localStorage.setItem('dept_notices', JSON.stringify(d.notices));
+    if (d.committees) localStorage.setItem('dept_committees', JSON.stringify(d.committees));
+    if (d.contacts) localStorage.setItem('dept_contacts', JSON.stringify(d.contacts));
+    if (d.inquiries) localStorage.setItem('dept_inquiries', JSON.stringify(d.inquiries));
+  } catch (e) {
+    console.warn('Local storage sync notice:', e);
+  }
+
   // Commit all writes in batches of 400 items
-  const BATCH_SIZE = 400;
-  for (let i = 0; i < operations.length; i += BATCH_SIZE) {
-    const chunk = operations.slice(i, i + BATCH_SIZE);
-    const batch = writeBatch(db);
-    for (const op of chunk) {
-      batch.set(op.ref, op.data, { merge: true });
+  try {
+    const BATCH_SIZE = 400;
+    for (let i = 0; i < operations.length; i += BATCH_SIZE) {
+      const chunk = operations.slice(i, i + BATCH_SIZE);
+      const batch = writeBatch(db);
+      for (const op of chunk) {
+        batch.set(op.ref, op.data, { merge: true });
+      }
+      await batch.commit();
     }
-    await batch.commit();
+  } catch (err: any) {
+    console.warn('Firestore write batch notice (restored data saved locally):', err);
   }
 
   markDatabaseAsSeeded();

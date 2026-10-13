@@ -278,6 +278,35 @@ export const DriveBackupTab: React.FC<DriveBackupTabProps> = ({
     downloadAnchor.remove();
   };
 
+  const handleRestoreLocalFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setStatusMessage(null);
+    try {
+      setIsRestoring(true);
+      const text = await file.text();
+      const backup = JSON.parse(text) as DepartmentBackupData;
+      if (!backup || !backup.data) {
+        throw new Error('Invalid JSON backup file format.');
+      }
+      const { counts } = await restoreAllDataToFirestore(backup);
+      setStatusMessage({
+        type: 'success',
+        text: `Data successfully restored from local JSON file! Restored ${counts.credentials} Passwords, ${counts.faculty} Faculty, ${counts.students} Students, ${counts.timeTable} Timetable slots, ${counts.syllabuses} Syllabi, ${counts.pyq} PYQs, ${counts.books} Books, ${counts.facilities} Photos, ${counts.notices} Notices, ${counts.committees} Committees, and ${counts.contacts} Directory entries.`,
+      });
+      if (onRestoreSuccess) {
+        onRestoreSuccess();
+      }
+    } catch (err: any) {
+      setStatusMessage({
+        type: 'error',
+        text: `Local restore failed: ${err?.message || 'Invalid JSON file'}`,
+      });
+    } finally {
+      setIsRestoring(false);
+    }
+  };
+
   const recordMetrics = [
     { label: 'Student IDs & Passwords', count: credentials?.length || 0, icon: KeyRound, color: 'text-amber-600 bg-amber-50' },
     { label: 'Faculty Members', count: faculty.length, icon: Users, color: 'text-blue-600 bg-blue-50' },
@@ -390,7 +419,7 @@ export const DriveBackupTab: React.FC<DriveBackupTabProps> = ({
       )}
 
       {/* Action Center Buttons */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {/* Backup Button Card */}
         <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-xs flex flex-col justify-between gap-4">
           <div className="space-y-1.5">
@@ -443,6 +472,36 @@ export const DriveBackupTab: React.FC<DriveBackupTabProps> = ({
             <CloudDownload className={`w-4 h-4 ${isRestoring ? 'animate-bounce' : ''}`} />
             <span>{isRestoring ? 'Restoring from Drive...' : 'Restore from Google Drive'}</span>
           </button>
+        </div>
+
+        {/* Local JSON Restore Card */}
+        <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-xs flex flex-col justify-between gap-4">
+          <div className="space-y-1.5">
+            <div className="flex items-center gap-2">
+              <div className="p-2 rounded-xl bg-emerald-100 text-emerald-800">
+                <FileJson className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="font-bold text-slate-900 text-sm">Restore from Local JSON File</h3>
+                <p className="text-[11px] text-slate-500">Upload saved JSON backup from computer</p>
+              </div>
+            </div>
+            <p className="text-xs text-slate-600 leading-relaxed mt-2">
+              Select a previously downloaded <span className="font-mono font-medium text-slate-800">.json</span> department backup file to restore all database records instantly.
+            </p>
+          </div>
+
+          <label className="w-full py-3 px-4 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold text-xs flex items-center justify-center gap-2 transition cursor-pointer shadow-sm">
+            <Download className="w-4 h-4" />
+            <span>{isRestoring ? 'Restoring...' : 'Upload & Restore JSON File'}</span>
+            <input
+              type="file"
+              accept=".json"
+              onChange={handleRestoreLocalFile}
+              disabled={isRestoring || isBackingUp}
+              className="hidden"
+            />
+          </label>
         </div>
       </div>
 

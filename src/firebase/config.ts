@@ -17,6 +17,7 @@ googleAuthProvider.setCustomParameters({
 // Dedicated Google Drive provider requested ONLY for question paper drive uploads
 export const googleDriveProvider = new GoogleAuthProvider();
 googleDriveProvider.addScope('https://www.googleapis.com/auth/drive.file');
+googleDriveProvider.addScope('https://www.googleapis.com/auth/drive');
 googleDriveProvider.setCustomParameters({
   prompt: 'consent',
 });
@@ -61,9 +62,33 @@ export interface FirestoreErrorInfo {
   };
 }
 
+type QuotaListener = (isExceeded: boolean, upgradeUrl: string) => void;
+const quotaListeners = new Set<QuotaListener>();
+let isQuotaExceeded = false;
+
+export const FIREBASE_CONSOLE_UPGRADE_URL = `https://console.firebase.google.com/project/${firebaseConfig.projectId}/firestore/databases/${databaseId || 'ai-studio-a07074d7-7887-4c85-81ef-bba22c8a516c'}/data?openUpgradeDialog=true`;
+
+export function notifyQuotaExceeded() {
+  if (!isQuotaExceeded) {
+    isQuotaExceeded = true;
+    quotaListeners.forEach(listener => listener(true, FIREBASE_CONSOLE_UPGRADE_URL));
+  }
+}
+
+export function subscribeToQuotaExceeded(listener: QuotaListener) {
+  quotaListeners.add(listener);
+  if (isQuotaExceeded) {
+    listener(true, FIREBASE_CONSOLE_UPGRADE_URL);
+  }
+  return () => {
+    quotaListeners.delete(listener);
+  };
+}
+
 export function handleFirestoreError(error: unknown, operationType: OperationType, path: string | null) {
+  const errMsg = error instanceof Error ? error.message : String(error);
   const errInfo: FirestoreErrorInfo = {
-    error: error instanceof Error ? error.message : String(error),
+    error: errMsg,
     authInfo: {
       userId: auth.currentUser?.uid,
       email: auth.currentUser?.email,
@@ -78,7 +103,17 @@ export function handleFirestoreError(error: unknown, operationType: OperationTyp
     operationType,
     path,
   };
-  console.error('Firestore Error: ', JSON.stringify(errInfo));
+  console.warn('Firestore Operation Notice: ', JSON.stringify(errInfo));
+
+  if (errMsg.includes('Quota limit exceeded') || errMsg.includes('Free daily read units per project')) {
+    notifyQuotaExceeded();
+  }
+
+  // Do not throw for GET/LIST operations so snapshot error callbacks continue executing fallbacks gracefully
+  if (operationType === OperationType.GET || operationType === OperationType.LIST) {
+    return;
+  }
+
   throw new Error(JSON.stringify(errInfo));
 }
 
@@ -86,7 +121,10 @@ export async function testConnection() {
   try {
     await getDocFromServer(doc(db, 'department_settings', 'general'));
   } catch (error) {
-    if (error instanceof Error && error.message.includes('the client is offline')) {
+    const errMsg = error instanceof Error ? error.message : String(error);
+    if (errMsg.includes('Quota limit exceeded') || errMsg.includes('Free daily read units per project')) {
+      notifyQuotaExceeded();
+    } else if (errMsg.includes('the client is offline')) {
       console.warn('Firebase client is offline or initializing.');
     }
   }
