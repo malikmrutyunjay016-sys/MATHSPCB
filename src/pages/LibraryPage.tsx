@@ -11,12 +11,9 @@ import {
   Bookmark,
   Layers,
   Sparkles,
-  RefreshCw,
-  Check,
 } from 'lucide-react';
 import { Book } from '../types';
 import { useAuth } from '../context/AuthContext';
-import { syncAllRegisterBooksToFirestore } from '../services/db';
 
 interface LibraryPageProps {
   books: Book[];
@@ -37,23 +34,6 @@ export const LibraryPage: React.FC<LibraryPageProps> = ({
   const [selectedSubject, setSelectedSubject] = useState<string>('All');
   const [searchTerm, setSearchTerm] = useState<string>('');
   const [statusFilter, setStatusFilter] = useState<string>('All');
-  const [isSyncing, setIsSyncing] = useState<boolean>(false);
-  const [syncFeedback, setSyncFeedback] = useState<string | null>(null);
-
-  const handleSyncDepartmentRegister = async () => {
-    try {
-      setIsSyncing(true);
-      setSyncFeedback(null);
-      const total = await syncAllRegisterBooksToFirestore();
-      setSyncFeedback(`Successfully synced all ${total} department books to catalogue!`);
-      setTimeout(() => setSyncFeedback(null), 4000);
-    } catch (err: any) {
-      setSyncFeedback('Sync completed. Refreshing books list...');
-      setTimeout(() => setSyncFeedback(null), 4000);
-    } finally {
-      setIsSyncing(false);
-    }
-  };
 
   const subjects = [
     'All',
@@ -103,26 +83,9 @@ export const LibraryPage: React.FC<LibraryPageProps> = ({
             <p className="text-xs sm:text-sm text-slate-600 max-w-2xl leading-relaxed">
               Explore over 1,250 textbook volumes, standard reference treatises, and research literature in pure and applied mathematics. Search by subject, accession number, or ISBN.
             </p>
-            {syncFeedback && (
-              <div className="p-2.5 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-800 font-semibold text-xs flex items-center gap-2 animate-in fade-in">
-                <Check className="w-4 h-4 text-emerald-600 shrink-0" />
-                <span>{syncFeedback}</span>
-              </div>
-            )}
           </div>
 
           <div className="flex flex-wrap items-center gap-3 shrink-0">
-            {isAdmin && (
-              <button
-                onClick={handleSyncDepartmentRegister}
-                disabled={isSyncing}
-                className="px-3.5 py-2.5 bg-emerald-700 hover:bg-emerald-600 text-white font-bold rounded-lg text-xs uppercase tracking-wider flex items-center gap-2 shadow-xs transition cursor-pointer disabled:opacity-50"
-                title="Sync all 116 register books to the live database"
-              >
-                <RefreshCw className={`w-3.5 h-3.5 ${isSyncing ? 'animate-spin' : ''}`} />
-                <span>{isSyncing ? 'Syncing...' : 'Sync Department Books (116)'}</span>
-              </button>
-            )}
             {isAdmin && (
               <button
                 onClick={onAddBook}

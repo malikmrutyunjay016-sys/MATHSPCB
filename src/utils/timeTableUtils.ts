@@ -272,6 +272,28 @@ export function triggerDirectPrint(htmlContent: string): void {
 }
 
 /**
+ * Opens a standalone HTML document in a new browser tab/window using a Blob URL.
+ */
+export function openHtmlInNewTab(htmlContent: string): void {
+  try {
+    const blob = new Blob([htmlContent], { type: 'text/html;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const win = window.open(url, '_blank');
+    if (!win) {
+      const a = document.createElement('a');
+      a.href = url;
+      a.target = '_blank';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+    }
+    setTimeout(() => URL.revokeObjectURL(url), 60000);
+  } catch {
+    triggerDirectPrint(htmlContent);
+  }
+}
+
+/**
  * Generates an official standalone printable HTML document for the Master Routine of a specific day
  * with Classes in each Row and Periods in each Column.
  */
@@ -346,50 +368,106 @@ export function generatePrintableMasterDayHtml(
   <title>Department Time Table - ${day} (${academicSession})</title>
   <style>
     @page { size: landscape; margin: 8mm; }
-    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif; margin: 0; padding: 15px; color: #0f172a; background: #fff; }
-    .header { text-align: center; border-bottom: 2px solid #0f172a; padding-bottom: 10px; margin-bottom: 12px; }
-    .title-college { font-size: 17px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; }
-    .title-dept { font-size: 13px; font-weight: 700; color: #334155; margin-top: 2px; }
-    .meta-bar { display: flex; justify-content: space-between; margin-top: 6px; font-size: 11px; font-weight: 600; color: #1e293b; }
+    * { box-sizing: border-box; }
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif; margin: 0; padding: 0; color: #0f172a; background: #f8fafc; }
+    .no-print-toolbar {
+      background: #0b1a2f; color: #ffffff; padding: 8px 16px;
+      display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;
+      font-size: 12px; border-bottom: 2px solid #f59e0b; position: sticky; top: 0; z-index: 100;
+    }
+    .btn-print {
+      background: #f59e0b; color: #0f172a; font-weight: 800; border: none;
+      padding: 6px 14px; border-radius: 6px; cursor: pointer; font-size: 11px;
+      display: inline-flex; align-items: center; gap: 5px;
+    }
+    .btn-print:hover { background: #fbbf24; }
+    .btn-tool {
+      background: #1e293b; color: #e2e8f0; border: 1px solid #475569;
+      padding: 5px 10px; border-radius: 5px; cursor: pointer; font-size: 11px; font-weight: 600;
+    }
+    .btn-tool:hover { background: #334155; color: #fff; }
+    .canvas-container { padding: 12px; display: flex; justify-content: center; overflow-x: auto; }
+    .wrapper {
+      background: #ffffff; width: 100%; max-width: 1300px; margin: 0 auto; padding: 14px 18px;
+      border: 1px solid #cbd5e1; border-radius: 8px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);
+      transition: transform 0.15s ease-out;
+    }
+    .header { text-align: center; border-bottom: 2px solid #0f172a; padding-bottom: 8px; margin-bottom: 10px; }
+    .title-college { font-size: 15px; font-weight: 900; text-transform: uppercase; letter-spacing: 0.5px; }
+    .title-dept { font-size: 12px; font-weight: 700; color: #b45309; margin-top: 2px; text-transform: uppercase; }
+    .meta-bar { display: flex; justify-content: space-between; margin-top: 6px; font-size: 10px; font-weight: 600; color: #1e293b; background: #f1f5f9; padding: 4px 8px; border-radius: 4px; }
     table { width: 100%; border-collapse: collapse; margin-top: 8px; table-layout: fixed; }
-    th { border: 1px solid #334155; background-color: #0b1a2f; color: #ffffff; padding: 8px 6px; font-size: 11px; text-transform: uppercase; }
-    .signatures { display: flex; justify-content: space-between; margin-top: 36px; padding-top: 8px; font-size: 11px; font-weight: 700; color: #1e293b; text-align: center; }
+    th { border: 1px solid #334155; background-color: #0b1a2f; color: #ffffff; padding: 8px 6px; font-size: 10px; text-transform: uppercase; }
+    .signatures { display: flex; justify-content: space-between; margin-top: 24px; padding-top: 8px; font-size: 10px; font-weight: 700; color: #1e293b; text-align: center; }
     .sig-box { width: 180px; border-top: 1px solid #0f172a; padding-top: 4px; }
-    .print-btn { background: #0b1a2f; color: #fff; border: none; padding: 8px 16px; border-radius: 6px; font-size: 12px; font-weight: bold; cursor: pointer; margin-bottom: 12px; }
-    @media print { .print-btn { display: none; } body { padding: 0; } }
+    @media print {
+      .no-print { display: none !important; }
+      body { background: white !important; margin: 0 !important; padding: 0 !important; }
+      .canvas-container { padding: 0 !important; overflow: visible !important; }
+      .wrapper { border: none !important; box-shadow: none !important; margin: 0 !important; padding: 0 !important; max-width: 100% !important; transform: none !important; }
+    }
   </style>
 </head>
 <body>
-  <button class="print-btn" onclick="window.print()">🖨️ Print / Save as PDF</button>
-
-  <div class="header">
-    <div class="title-college">PANCHAYAT COLLEGE, BARAGADA (AUTONOMOUS)</div>
-    <div class="title-dept">DEPARTMENT OF MATHEMATICS • OFFICIAL MASTER TIME TABLE</div>
-    <div class="meta-bar">
-      <span>DAY: <strong style="color: #b45309;">${day.toUpperCase()}</strong></span>
-      <span>CLASSES: <strong>${rows.length} Active Semester Cohorts</strong></span>
-      <span>PERIODS: <strong>${periods.length} Daily Sessions</strong></span>
-      <span>SESSION: <strong>${academicSession}</strong></span>
+  <div class="no-print-toolbar no-print">
+    <div style="display: flex; align-items: center; gap: 8px;">
+      <span style="font-weight: 800; color: #f59e0b;">🏛️ DAY MASTER TIME TABLE</span>
+      <span style="opacity: 0.85;">• ${day.toUpperCase()} (${academicSession})</span>
+    </div>
+    <div style="display: flex; align-items: center; gap: 6px;">
+      <button class="btn-print" onclick="window.print()">🖨️ Print / Save as PDF</button>
+      <button class="btn-tool" onclick="zoom(0.1)" title="Zoom in">🔍 Zoom +</button>
+      <button class="btn-tool" onclick="zoom(-0.1)" title="Zoom out">🔍 Zoom -</button>
+      <button class="btn-tool" onclick="resetZoom()" title="Reset scale">↺ 100%</button>
     </div>
   </div>
 
-  <table>
-    <thead>
-      <tr>
-        <th style="width: 140px; text-align: left; padding-left: 8px;">CLASS / SEMESTER</th>
-        ${periodColsHtml}
-      </tr>
-    </thead>
-    <tbody>
-      ${rowsHtml}
-    </tbody>
-  </table>
+  <div class="canvas-container">
+    <div id="day-wrapper" class="wrapper">
+      <div class="header">
+        <div class="title-college">PANCHAYAT COLLEGE, BARAGADA (AUTONOMOUS)</div>
+        <div class="title-dept">DEPARTMENT OF MATHEMATICS • OFFICIAL MASTER TIME TABLE</div>
+        <div class="meta-bar">
+          <span>DAY: <strong style="color: #b45309;">${day.toUpperCase()}</strong></span>
+          <span>CLASSES: <strong>${rows.length} Active Semester Cohorts</strong></span>
+          <span>PERIODS: <strong>${periods.length} Daily Sessions</strong></span>
+          <span>SESSION: <strong>${academicSession}</strong></span>
+        </div>
+      </div>
 
-  <div class="signatures">
-    <div class="sig-box">Head of Department<br><span style="font-weight: normal; font-size: 10px;">Dept. of Mathematics</span></div>
-    <div class="sig-box">Academic Bursar<br><span style="font-weight: normal; font-size: 10px;">Panchayat College</span></div>
-    <div class="sig-box">Principal<br><span style="font-weight: normal; font-size: 10px;">Panchayat College, Baragada</span></div>
+      <table>
+        <thead>
+          <tr>
+            <th style="width: 140px; text-align: left; padding-left: 8px;">CLASS / SEMESTER</th>
+            ${periodColsHtml}
+          </tr>
+        </thead>
+        <tbody>
+          ${rowsHtml}
+        </tbody>
+      </table>
+
+      <div class="signatures">
+        <div class="sig-box">Head of Department<br><span style="font-weight: normal; font-size: 9px; color: #475569;">Dept. of Mathematics</span></div>
+        <div class="sig-box">Academic Bursar<br><span style="font-weight: normal; font-size: 9px; color: #475569;">Panchayat College</span></div>
+        <div class="sig-box">Principal<br><span style="font-weight: normal; font-size: 9px; color: #475569;">Panchayat College, Baragada</span></div>
+      </div>
+    </div>
   </div>
+
+  <script>
+    let currentScale = 1;
+    function zoom(delta) {
+      currentScale = Math.max(0.6, Math.min(1.8, currentScale + delta));
+      const el = document.getElementById('day-wrapper');
+      if (el) { el.style.transform = 'scale(' + currentScale + ')'; el.style.transformOrigin = 'top center'; }
+    }
+    function resetZoom() {
+      currentScale = 1;
+      const el = document.getElementById('day-wrapper');
+      if (el) { el.style.transform = 'none'; }
+    }
+  </script>
 </body>
 </html>`;
 }
@@ -480,50 +558,106 @@ export function generatePrintableScheduleHtml(
   <title>Time Table - ${course} ${yearLevel} (${semester})</title>
   <style>
     @page { size: landscape; margin: 8mm; }
-    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif; margin: 0; padding: 15px; color: #0f172a; background: #fff; }
-    .header { text-align: center; border-bottom: 2px solid #0f172a; padding-bottom: 12px; margin-bottom: 15px; }
-    .title-college { font-size: 18px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; }
-    .title-dept { font-size: 14px; font-weight: 700; color: #334155; margin-top: 2px; }
-    .meta-bar { display: flex; justify-content: space-between; margin-top: 8px; font-size: 12px; font-weight: 600; color: #1e293b; }
-    table { width: 100%; border-collapse: collapse; margin-top: 10px; table-layout: fixed; }
-    th { border: 1px solid #334155; background-color: #0b1a2f; color: #ffffff; padding: 10px 8px; font-size: 11px; text-transform: uppercase; }
-    .signatures { display: flex; justify-content: space-between; margin-top: 40px; padding-top: 10px; font-size: 11px; font-weight: 700; color: #1e293b; text-align: center; }
-    .sig-box { width: 200px; border-top: 1px solid #0f172a; padding-top: 5px; }
-    .print-btn { background: #0b1a2f; color: #fff; border: none; padding: 8px 16px; border-radius: 6px; font-size: 12px; font-weight: bold; cursor: pointer; margin-bottom: 15px; }
-    @media print { .print-btn { display: none; } body { padding: 0; } }
+    * { box-sizing: border-box; }
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif; margin: 0; padding: 0; color: #0f172a; background: #f8fafc; }
+    .no-print-toolbar {
+      background: #0b1a2f; color: #ffffff; padding: 8px 16px;
+      display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;
+      font-size: 12px; border-bottom: 2px solid #f59e0b; position: sticky; top: 0; z-index: 100;
+    }
+    .btn-print {
+      background: #f59e0b; color: #0f172a; font-weight: 800; border: none;
+      padding: 6px 14px; border-radius: 6px; cursor: pointer; font-size: 11px;
+      display: inline-flex; align-items: center; gap: 5px;
+    }
+    .btn-print:hover { background: #fbbf24; }
+    .btn-tool {
+      background: #1e293b; color: #e2e8f0; border: 1px solid #475569;
+      padding: 5px 10px; border-radius: 5px; cursor: pointer; font-size: 11px; font-weight: 600;
+    }
+    .btn-tool:hover { background: #334155; color: #fff; }
+    .canvas-container { padding: 12px; display: flex; justify-content: center; overflow-x: auto; }
+    .wrapper {
+      background: #ffffff; width: 100%; max-width: 1300px; margin: 0 auto; padding: 14px 18px;
+      border: 1px solid #cbd5e1; border-radius: 8px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);
+      transition: transform 0.15s ease-out;
+    }
+    .header { text-align: center; border-bottom: 2px solid #0f172a; padding-bottom: 8px; margin-bottom: 10px; }
+    .title-college { font-size: 15px; font-weight: 900; text-transform: uppercase; letter-spacing: 0.5px; }
+    .title-dept { font-size: 12px; font-weight: 700; color: #b45309; margin-top: 2px; text-transform: uppercase; }
+    .meta-bar { display: flex; justify-content: space-between; margin-top: 6px; font-size: 10px; font-weight: 600; color: #1e293b; background: #f1f5f9; padding: 4px 8px; border-radius: 4px; }
+    table { width: 100%; border-collapse: collapse; margin-top: 8px; table-layout: fixed; }
+    th { border: 1px solid #334155; background-color: #0b1a2f; color: #ffffff; padding: 8px 6px; font-size: 10px; text-transform: uppercase; }
+    .signatures { display: flex; justify-content: space-between; margin-top: 24px; padding-top: 8px; font-size: 10px; font-weight: 700; color: #1e293b; text-align: center; }
+    .sig-box { width: 180px; border-top: 1px solid #0f172a; padding-top: 4px; }
+    @media print {
+      .no-print { display: none !important; }
+      body { background: white !important; margin: 0 !important; padding: 0 !important; }
+      .canvas-container { padding: 0 !important; overflow: visible !important; }
+      .wrapper { border: none !important; box-shadow: none !important; margin: 0 !important; padding: 0 !important; max-width: 100% !important; transform: none !important; }
+    }
   </style>
 </head>
 <body>
-  <button class="print-btn" onclick="window.print()">🖨️ Print / Save as PDF</button>
-
-  <div class="header">
-    <div class="title-college">PANCHAYAT COLLEGE, BARAGADA (AUTONOMOUS)</div>
-    <div class="title-dept">DEPARTMENT OF MATHEMATICS • MASTER CLASS TIME TABLE</div>
-    <div class="meta-bar">
-      <span>PROGRAM: <strong>${course}</strong></span>
-      <span>YEAR: <strong>${yearLevel}</strong></span>
-      <span>SEMESTER: <strong>${semester}</strong></span>
-      <span>SESSION: <strong>${academicSession}</strong></span>
+  <div class="no-print-toolbar no-print">
+    <div style="display: flex; align-items: center; gap: 8px;">
+      <span style="font-weight: 800; color: #f59e0b;">🏛️ COHORT TIME TABLE</span>
+      <span style="opacity: 0.85;">• ${course} ${yearLevel} (${semester})</span>
+    </div>
+    <div style="display: flex; align-items: center; gap: 6px;">
+      <button class="btn-print" onclick="window.print()">🖨️ Print / Save as PDF</button>
+      <button class="btn-tool" onclick="zoom(0.1)" title="Zoom in">🔍 Zoom +</button>
+      <button class="btn-tool" onclick="zoom(-0.1)" title="Zoom out">🔍 Zoom -</button>
+      <button class="btn-tool" onclick="resetZoom()" title="Reset scale">↺ 100%</button>
     </div>
   </div>
 
-  <table>
-    <thead>
-      <tr>
-        <th style="width: 100px;">DAY</th>
-        ${periodColsHtml}
-      </tr>
-    </thead>
-    <tbody>
-      ${rowsHtml}
-    </tbody>
-  </table>
+  <div class="canvas-container">
+    <div id="cohort-wrapper" class="wrapper">
+      <div class="header">
+        <div class="title-college">PANCHAYAT COLLEGE, BARAGADA (AUTONOMOUS)</div>
+        <div class="title-dept">DEPARTMENT OF MATHEMATICS • MASTER CLASS TIME TABLE</div>
+        <div class="meta-bar">
+          <span>PROGRAM: <strong>${course}</strong></span>
+          <span>YEAR: <strong>${yearLevel}</strong></span>
+          <span>SEMESTER: <strong>${semester}</strong></span>
+          <span>SESSION: <strong>${academicSession}</strong></span>
+        </div>
+      </div>
 
-  <div class="signatures">
-    <div class="sig-box">Head of Department<br><span style="font-weight: normal; font-size: 10px;">Dept. of Mathematics</span></div>
-    <div class="sig-box">Academic Bursar<br><span style="font-weight: normal; font-size: 10px;">Panchayat College</span></div>
-    <div class="sig-box">Principal<br><span style="font-weight: normal; font-size: 10px;">Panchayat College, Baragada</span></div>
+      <table>
+        <thead>
+          <tr>
+            <th style="width: 100px;">DAY</th>
+            ${periodColsHtml}
+          </tr>
+        </thead>
+        <tbody>
+          ${rowsHtml}
+        </tbody>
+      </table>
+
+      <div class="signatures">
+        <div class="sig-box">Head of Department<br><span style="font-weight: normal; font-size: 9px; color: #475569;">Dept. of Mathematics</span></div>
+        <div class="sig-box">Academic Bursar<br><span style="font-weight: normal; font-size: 9px; color: #475569;">Panchayat College</span></div>
+        <div class="sig-box">Principal<br><span style="font-weight: normal; font-size: 9px; color: #475569;">Panchayat College, Baragada</span></div>
+      </div>
+    </div>
   </div>
+
+  <script>
+    let currentScale = 1;
+    function zoom(delta) {
+      currentScale = Math.max(0.6, Math.min(1.8, currentScale + delta));
+      const el = document.getElementById('cohort-wrapper');
+      if (el) { el.style.transform = 'scale(' + currentScale + ')'; el.style.transformOrigin = 'top center'; }
+    }
+    function resetZoom() {
+      currentScale = 1;
+      const el = document.getElementById('cohort-wrapper');
+      if (el) { el.style.transform = 'none'; }
+    }
+  </script>
 </body>
 </html>`;
 }
@@ -574,8 +708,8 @@ export function generatePrintableAllDaysMasterHtml(
         .map((row, rowIndex) => {
           const isFirstRowOfDay = rowIndex === 0;
           const dayCellHtml = isFirstRowOfDay
-            ? `<td rowspan="${rows.length}" style="width: 22px; max-width: 24px; background-color: ${dayColor}; color: #fef08a; font-weight: 900; font-size: 8px; text-align: center; vertical-align: middle; padding: 2px 1px; border: 1px solid #334155; writing-mode: vertical-rl; transform: rotate(180deg); letter-spacing: 1px;">
-                ${day.toUpperCase()}
+            ? `<td rowspan="${rows.length}" style="width: 22px; max-width: 26px; background-color: ${dayColor}; color: #fef08a; font-weight: 900; font-size: 8px; text-align: center; vertical-align: middle; padding: 2px 1px; border: 1px solid #334155; line-height: 1.15; letter-spacing: 0.5px;">
+                ${day.toUpperCase().split('').join('<br>')}
               </td>`
             : '';
 
@@ -596,10 +730,10 @@ export function generatePrintableAllDaysMasterHtml(
               const slotContent = matchingSlots
                 .map(
                   (s) => `
-                  <div style="font-size: 6.5px; line-height: 1.1; margin: 0; padding: 0.5px 0;">
-                    <span style="font-weight: 800; color: #b45309; font-family: monospace; font-size: 6.5px;">${s.paperCode || ''}</span>
-                    <div style="font-weight: 700; color: #0f172a; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${s.subjectName}">${s.subjectName}</div>
-                    <div style="color: #1e40af; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">👤 ${s.facultyName || 'Faculty'}</div>
+                  <div style="font-size: 6.8px; line-height: 1.15; margin: 0; padding: 0.5px 0;">
+                    <span style="font-weight: 800; color: #b45309; font-family: monospace; font-size: 6.6px;">${s.paperCode || ''}</span>
+                    <div style="font-weight: 700; color: #0f172a;" title="${s.subjectName}">${s.subjectName}</div>
+                    <div style="color: #1e40af; font-weight: 600;">👤 ${s.facultyName || 'Faculty'}</div>
                     <div style="color: #64748b; font-size: 6px;">🏛️ ${s.roomNo || 'Room'} <span style="font-style: italic;">(${s.type || 'Lec'})</span></div>
                   </div>
                 `
@@ -613,9 +747,9 @@ export function generatePrintableAllDaysMasterHtml(
           return `
             <tr style="height: 13px;">
               ${dayCellHtml}
-              <td style="width: 85px; max-width: 90px; padding: 1.5px 3px; border: 1px solid #94a3b8; font-weight: 700; background-color: ${rowIndex % 2 === 0 ? '#f1f5f9' : '#e2e8f0'}; color: #0f172a; font-size: 7px; line-height: 1.1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${row.label || `${row.course} - ${row.semester}`}">
+              <td style="width: 86px; max-width: 92px; padding: 1.5px 3px; border: 1px solid #94a3b8; font-weight: 700; background-color: ${rowIndex % 2 === 0 ? '#f1f5f9' : '#e2e8f0'}; color: #0f172a; font-size: 7.2px; line-height: 1.15;" title="${row.label || `${row.course} - ${row.semester}`}">
                 <div style="font-weight: 800; color: #0b1a2f;">${row.label || `${row.course} - ${row.semester}`}</div>
-                <div style="font-size: 6px; font-weight: normal; color: #475569;">${row.semester} (${row.yearLevel})</div>
+                <div style="font-size: 6.2px; font-weight: 600; color: #475569;">${row.semester} (${row.yearLevel})</div>
               </td>
               ${cells}
             </tr>
@@ -629,24 +763,183 @@ export function generatePrintableAllDaysMasterHtml(
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Master Time Table - All Days & Classes (Single Page)</title>
+  <title>Master Time Table - All Days & Classes (Department of Mathematics)</title>
   <style>
     @page {
       size: A3 landscape;
       margin: 4mm 5mm;
     }
+    * {
+      box-sizing: border-box;
+    }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+      margin: 0;
+      padding: 0;
+      color: #0f172a;
+      background: #f1f5f9;
+    }
+    .no-print-toolbar {
+      position: sticky;
+      top: 0;
+      z-index: 1000;
+      background: #0b1a2f;
+      color: #fff;
+      padding: 8px 16px;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.25);
+      border-bottom: 2px solid #f59e0b;
+    }
+    .toolbar-title {
+      font-size: 12px;
+      font-weight: 800;
+      color: #f59e0b;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .toolbar-subtitle {
+      color: #cbd5e1;
+      font-weight: normal;
+      font-size: 11px;
+    }
+    .toolbar-actions {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .btn-print {
+      background: #f59e0b;
+      color: #0b1a2f;
+      border: none;
+      padding: 6px 14px;
+      border-radius: 6px;
+      font-size: 11px;
+      font-weight: 800;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      transition: background 0.15s;
+    }
+    .btn-print:hover {
+      background: #fbbf24;
+    }
+    .btn-tool {
+      background: #1e293b;
+      color: #e2e8f0;
+      border: 1px solid #475569;
+      padding: 5px 10px;
+      border-radius: 5px;
+      cursor: pointer;
+      font-size: 11px;
+      font-weight: 600;
+      transition: all 0.15s;
+    }
+    .btn-tool:hover {
+      background: #334155;
+      color: #fff;
+    }
+    .preview-canvas {
+      padding: 12px;
+      display: flex;
+      justify-content: center;
+      overflow-x: auto;
+    }
+    .single-page-wrapper {
+      background: #ffffff;
+      width: 100%;
+      max-width: 1480px;
+      margin: 0 auto;
+      padding: 12px 14px;
+      border: 1px solid #cbd5e1;
+      border-radius: 6px;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.06);
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      transition: transform 0.15s ease-out;
+    }
+    .header {
+      text-align: center;
+      border-bottom: 2px solid #0b1a2f;
+      padding-bottom: 3px;
+      margin-bottom: 5px;
+    }
+    .title-college {
+      font-size: 14px;
+      font-weight: 900;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: #0b1a2f;
+    }
+    .title-dept {
+      font-size: 10.5px;
+      font-weight: 800;
+      color: #b45309;
+      text-transform: uppercase;
+      margin-top: 1px;
+    }
+    .meta-bar {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      margin-top: 3px;
+      font-size: 8px;
+      font-weight: 700;
+      color: #334155;
+      background: #f8fafc;
+      padding: 2px 6px;
+      border-radius: 4px;
+      border: 1px solid #e2e8f0;
+    }
+    table.master-table {
+      width: 100%;
+      border-collapse: collapse;
+      table-layout: fixed;
+      font-size: 7.2px;
+    }
+    table.master-table th, table.master-table td {
+      border: 1px solid #64748b;
+    }
+    .signatures {
+      display: flex;
+      justify-content: space-between;
+      margin-top: 8px;
+      padding-top: 3px;
+      font-size: 8px;
+      font-weight: 800;
+      color: #0b1a2f;
+      text-align: center;
+    }
+    .sig-box {
+      width: 150px;
+      border-top: 1.5px solid #0b1a2f;
+      padding-top: 2px;
+    }
+
     @media print {
       body {
         margin: 0 !important;
         padding: 0 !important;
+        background: #ffffff !important;
         -webkit-print-color-adjust: exact !important;
         print-color-adjust: exact !important;
       }
       .no-print {
         display: none !important;
       }
+      .preview-canvas {
+        padding: 0 !important;
+        overflow: visible !important;
+      }
       .single-page-wrapper {
         width: 100% !important;
+        max-width: 100% !important;
         height: 98vh !important;
         max-height: 98vh !important;
         overflow: hidden !important;
@@ -655,169 +948,92 @@ export function generatePrintableAllDaysMasterHtml(
         border: none !important;
         box-shadow: none !important;
         padding: 0 !important;
+        margin: 0 !important;
+        border-radius: 0 !important;
+        transform: none !important;
       }
-    }
-    * {
-      box-sizing: border-box;
-    }
-    body {
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
-      margin: 0;
-      padding: 6px;
-      color: #0f172a;
-      background: #f1f5f9;
-    }
-    .no-print-toolbar {
-      max-width: 1350px;
-      margin: 0 auto 6px auto;
-      background: #0b1a2f;
-      color: #fff;
-      padding: 6px 12px;
-      border-radius: 6px;
-      display: flex;
-      flex-wrap: wrap;
-      align-items: center;
-      justify-content: space-between;
-      gap: 8px;
-      font-size: 11px;
-    }
-    .btn-print {
-      background: #f59e0b;
-      color: #000;
-      border: none;
-      padding: 5px 12px;
-      border-radius: 5px;
-      font-size: 11px;
-      font-weight: 800;
-      cursor: pointer;
-      display: inline-flex;
-      align-items: center;
-      gap: 4px;
-    }
-    .btn-print:hover {
-      background: #fbbf24;
-    }
-    .single-page-wrapper {
-      background: #ffffff;
-      max-width: 1350px;
-      margin: 0 auto;
-      padding: 6px 8px;
-      border: 1px solid #cbd5e1;
-      border-radius: 4px;
-      display: flex;
-      flex-direction: column;
-      justify-content: space-between;
-      height: calc(100vh - 55px);
-      min-height: 600px;
-      overflow: hidden;
-    }
-    .header {
-      text-align: center;
-      border-bottom: 2px solid #0b1a2f;
-      padding-bottom: 2px;
-      margin-bottom: 3px;
-    }
-    .title-college {
-      font-size: 13px;
-      font-weight: 900;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-      color: #0b1a2f;
-    }
-    .title-dept {
-      font-size: 10px;
-      font-weight: 800;
-      color: #b45309;
-      text-transform: uppercase;
-      margin-top: 1px;
-    }
-    .meta-bar {
-      display: flex;
-      justify-content: space-between;
-      margin-top: 2px;
-      font-size: 8px;
-      font-weight: 700;
-      color: #334155;
-      background: #f8fafc;
-      padding: 1px 4px;
-      border-radius: 3px;
-    }
-    table.master-table {
-      width: 100%;
-      border-collapse: collapse;
-      table-layout: fixed;
-      font-size: 7px;
-    }
-    table.master-table th, table.master-table td {
-      border: 1px solid #475569;
-    }
-    .signatures {
-      display: flex;
-      justify-content: space-between;
-      margin-top: 4px;
-      padding-top: 2px;
-      font-size: 8px;
-      font-weight: 800;
-      color: #0b1a2f;
-      text-align: center;
-    }
-    .sig-box {
-      width: 140px;
-      border-top: 1px solid #0b1a2f;
-      padding-top: 2px;
+      table.master-table {
+        font-size: 6.8px !important;
+      }
+      .title-college { font-size: 13px !important; }
+      .title-dept { font-size: 10px !important; }
+      .meta-bar { font-size: 7.2px !important; padding: 1px 3px !important; }
+      .signatures { font-size: 7.2px !important; margin-top: 3px !important; }
+      .sig-box { width: 130px !important; }
     }
   </style>
 </head>
 <body>
   <div class="no-print-toolbar no-print">
-    <div style="display: flex; align-items: center; gap: 8px;">
-      <span style="font-weight: 800; color: #f59e0b;">MASTER TIME TABLE (ALL DAYS &amp; CLASSES)</span>
-      <span style="opacity: 0.8;">• Single Page Mode (Fits on 1 sheet of paper)</span>
+    <div class="toolbar-title">
+      <span>🏛️ MASTER TIME TABLE (ALL DAYS &amp; CLASSES)</span>
+      <span class="toolbar-subtitle">• 1 Page Landscape View (Mon–Sat)</span>
     </div>
-    <div style="display: flex; align-items: center; gap: 6px;">
+    <div class="toolbar-actions">
       <button class="btn-print" onclick="window.print()">
         🖨️ Print / Save as PDF (1 Page)
       </button>
-      <button style="background: #334155; color: #fff; border: none; padding: 5px 10px; border-radius: 5px; cursor: pointer; font-size: 11px;" onclick="document.querySelector('.single-page-wrapper').style.transform = (document.querySelector('.single-page-wrapper').style.transform === 'scale(0.9)' ? 'scale(1)' : 'scale(0.9)'); document.querySelector('.single-page-wrapper').style.transformOrigin = 'top center';">
-        🔍 Toggle Zoom (Fit Check)
-      </button>
+      <button class="btn-tool" onclick="zoom(0.1)" title="Zoom in">🔍 Zoom +</button>
+      <button class="btn-tool" onclick="zoom(-0.1)" title="Zoom out">🔍 Zoom -</button>
+      <button class="btn-tool" onclick="resetZoom()" title="Reset scale">↺ 100%</button>
     </div>
   </div>
 
-  <div class="single-page-wrapper">
-    <div>
-      <div class="header">
-        <div class="title-college">PANCHAYAT COLLEGE, BARAGADA (AUTONOMOUS)</div>
-        <div class="title-dept">DEPARTMENT OF MATHEMATICS • ALL-DAYS MASTER CLASS TIME TABLE</div>
-        <div class="meta-bar">
-          <span>WORKING DAYS: <strong>MONDAY – SATURDAY (6 DAYS)</strong></span>
-          <span>PROGRAMS: <strong>UG NEP, UG AEDP &amp; PG (${rows.length} COHORTS)</strong></span>
-          <span>PERIODS: <strong>11 DAILY SESSIONS (09:15 AM – 05:30 PM)</strong></span>
-          <span>SESSION: <strong>${academicSession}</strong></span>
-          <span>TOTAL CLASSES: <strong>${totalClassesCount} SCHEDULED</strong></span>
+  <div class="preview-canvas">
+    <div id="print-wrapper" class="single-page-wrapper">
+      <div>
+        <div class="header">
+          <div class="title-college">PANCHAYAT COLLEGE, BARAGADA (AUTONOMOUS)</div>
+          <div class="title-dept">DEPARTMENT OF MATHEMATICS • ALL-DAYS MASTER CLASS TIME TABLE</div>
+          <div class="meta-bar">
+            <span>WORKING DAYS: <strong>MONDAY – SATURDAY (6 DAYS)</strong></span>
+            <span>PROGRAMS: <strong>UG NEP, UG AEDP &amp; PG (${rows.length} COHORTS)</strong></span>
+            <span>PERIODS: <strong>${periods.length} DAILY SESSIONS (09:15 AM – 05:30 PM)</strong></span>
+            <span>SESSION: <strong>${academicSession}</strong></span>
+            <span>TOTAL CLASSES: <strong>${totalClassesCount} SCHEDULED</strong></span>
+          </div>
         </div>
+
+        <table class="master-table">
+          <thead>
+            <tr>
+              <th style="width: 22px; max-width: 26px; background-color: #0b1a2f; color: #fef08a; font-size: 7.5px; padding: 2px 1px; text-align: center;">DAY</th>
+              <th style="width: 86px; max-width: 92px; background-color: #0b1a2f; color: #ffffff; text-align: left; padding: 2px 4px; font-size: 7.5px;">CLASS / PROGRAM</th>
+              ${periodColsHtml}
+            </tr>
+          </thead>
+          <tbody>
+            ${dayRowsHtml}
+          </tbody>
+        </table>
       </div>
 
-      <table class="master-table">
-        <thead>
-          <tr>
-            <th style="width: 22px; max-width: 24px; background-color: #0b1a2f; color: #fef08a; font-size: 7.5px; padding: 2px 1px;">DAY</th>
-            <th style="width: 85px; max-width: 90px; background-color: #0b1a2f; color: #ffffff; text-align: left; padding: 2px 4px; font-size: 7.5px;">CLASS / PROGRAM</th>
-            ${periodColsHtml}
-          </tr>
-        </thead>
-        <tbody>
-          ${dayRowsHtml}
-        </tbody>
-      </table>
-    </div>
-
-    <div class="signatures">
-      <div class="sig-box">Head of Department<br><span style="font-weight: normal; font-size: 7px; color: #475569;">Dept. of Mathematics</span></div>
-      <div class="sig-box">Academic Bursar<br><span style="font-weight: normal; font-size: 7px; color: #475569;">Panchayat College</span></div>
-      <div class="sig-box">Principal<br><span style="font-weight: normal; font-size: 7px; color: #475569;">Panchayat College, Baragada</span></div>
+      <div class="signatures">
+        <div class="sig-box">Head of Department<br><span style="font-weight: normal; font-size: 7px; color: #475569;">Dept. of Mathematics</span></div>
+        <div class="sig-box">Academic Bursar<br><span style="font-weight: normal; font-size: 7px; color: #475569;">Panchayat College</span></div>
+        <div class="sig-box">Principal<br><span style="font-weight: normal; font-size: 7px; color: #475569;">Panchayat College, Baragada</span></div>
+      </div>
     </div>
   </div>
+
+  <script>
+    let currentScale = 1;
+    function zoom(delta) {
+      currentScale = Math.max(0.6, Math.min(1.8, currentScale + delta));
+      const el = document.getElementById('print-wrapper');
+      if (el) {
+        el.style.transform = 'scale(' + currentScale + ')';
+        el.style.transformOrigin = 'top center';
+      }
+    }
+    function resetZoom() {
+      currentScale = 1;
+      const el = document.getElementById('print-wrapper');
+      if (el) {
+        el.style.transform = 'none';
+      }
+    }
+  </script>
 </body>
 </html>`;
 }
@@ -1011,10 +1227,9 @@ export function generatePrintableFacultyScheduleHtml(
   const periodHeaderHtml = periods
     .map(
       (p) => `
-    <th style="border: 1px solid #1e293b; background-color: #0b1a2f; color: #ffffff; padding: 6px 4px; text-align: center; font-size: 8px;">
-      ${p.label}
-      <br>
-      <span style="font-size: 7px; opacity: 0.85; font-weight: normal;">${p.startTime} – ${p.endTime}</span>
+    <th style="border: 1px solid #1e293b; background-color: #0b1a2f; color: #ffffff; padding: 6px 4px; text-align: center; font-size: 9.5px;">
+      <div style="font-weight: 800;">${p.label}</div>
+      <div style="font-size: 8px; opacity: 0.85; font-weight: normal; font-family: monospace;">${p.startTime}–${p.endTime}</div>
     </th>
   `
     )
@@ -1053,11 +1268,11 @@ export function generatePrintableFacultyScheduleHtml(
           const slotClassWeight = countSlotClasses(match, facultyDesignation);
 
           return `
-            <td ${colSpanAttr} style="border: 1px solid #475569; padding: 4px; text-align: left; vertical-align: top; background-color: ${
+            <td ${colSpanAttr} style="border: 1px solid #475569; padding: 5px; text-align: left; vertical-align: top; background-color: ${
               isLab ? '#fef3c7' : '#ffffff'
             };">
-              <div style="font-weight: 800; font-size: 8.5px; color: #0b1a2f; line-height: 1.1;">${match.subjectName}</div>
-              <div style="font-size: 7.5px; font-weight: 700; color: #b45309; margin-top: 2px;">
+              <div style="font-weight: 800; font-size: 9.5px; color: #0b1a2f; line-height: 1.15;">${match.subjectName}</div>
+              <div style="font-size: 8.5px; font-weight: 700; color: #b45309; margin-top: 2px;">
                 ${
                   match.paperCode
                     ? `<span style="font-family: monospace; background: #fef08a; padding: 1px 3px; border-radius: 2px; border: 1px solid #fde047;">${match.paperCode}</span> `
@@ -1065,7 +1280,7 @@ export function generatePrintableFacultyScheduleHtml(
                 }
                 ${match.course} (${match.yearLevel} - ${match.semester})
               </div>
-              <div style="font-size: 7.5px; color: #334155; margin-top: 2px;">
+              <div style="font-size: 8px; color: #334155; margin-top: 2px;">
                 🏛️ ${match.roomNo} <span style="font-weight: 600;">(${match.type}${
             span > 1 ? ` • ${span} Periods = ${slotClassWeight} Class${slotClassWeight > 1 ? 'es' : ''}` : ''
           })</span>
@@ -1080,10 +1295,10 @@ export function generatePrintableFacultyScheduleHtml(
 
     return `
       <tr>
-        <td style="border: 1px solid #1e293b; background-color: #f1f5f9; font-weight: 800; font-size: 8.5px; text-align: center; color: #0b1a2f; padding: 6px 2px;">
+        <td style="border: 1px solid #1e293b; background-color: #f1f5f9; font-weight: 800; font-size: 9px; text-align: center; color: #0b1a2f; padding: 6px 2px;">
           ${day.toUpperCase()}
           <br>
-          <span style="font-size: 7px; color: #64748b; font-weight: normal;">(${dayClassesCount} class${
+          <span style="font-size: 7.5px; color: #64748b; font-weight: normal;">(${dayClassesCount} class${
       dayClassesCount === 1 ? '' : 'es'
     })</span>
         </td>
@@ -1096,35 +1311,42 @@ export function generatePrintableFacultyScheduleHtml(
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Faculty Routine - ${facultyName}</title>
+  <title>Faculty Routine - ${facultyName} (${academicSession})</title>
   <style>
     @page { size: A4 landscape; margin: 6mm; }
+    * { box-sizing: border-box; }
     body {
       font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
       margin: 0; padding: 0; background-color: #f8fafc; color: #0f172a;
     }
     .no-print-toolbar {
       background: #0b1a2f; color: #ffffff; padding: 8px 16px;
-      display: flex; justify-content: space-between; align-items: center;
+      display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;
       font-size: 12px; border-bottom: 2px solid #f59e0b; position: sticky; top: 0; z-index: 100;
     }
     .btn-print {
       background: #f59e0b; color: #0f172a; font-weight: 800; border: none;
       padding: 6px 14px; border-radius: 6px; cursor: pointer; font-size: 11px;
+      display: inline-flex; align-items: center; gap: 5px;
     }
-    @media print {
-      .no-print { display: none !important; }
-      body { background: white; }
-      .wrapper { border: none !important; box-shadow: none !important; height: auto !important; margin: 0 !important; }
+    .btn-print:hover { background: #fbbf24; }
+    .btn-tool {
+      background: #1e293b; color: #e2e8f0; border: 1px solid #475569;
+      padding: 5px 10px; border-radius: 5px; cursor: pointer; font-size: 11px; font-weight: 600;
+    }
+    .btn-tool:hover { background: #334155; color: #fff; }
+    .canvas-container {
+      padding: 12px; display: flex; justify-content: center; overflow-x: auto;
     }
     .wrapper {
-      background: #ffffff; max-width: 1250px; margin: 10px auto; padding: 12px 16px;
+      background: #ffffff; width: 100%; max-width: 1300px; margin: 0 auto; padding: 14px 18px;
       border: 1px solid #cbd5e1; border-radius: 8px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);
+      transition: transform 0.15s ease-out;
     }
     .header {
       text-align: center; border-bottom: 2px solid #0b1a2f; padding-bottom: 6px; margin-bottom: 8px;
     }
-    .title-college { font-size: 14px; font-weight: 900; text-transform: uppercase; color: #0b1a2f; }
+    .title-college { font-size: 14px; font-weight: 900; text-transform: uppercase; color: #0b1a2f; letter-spacing: 0.5px; }
     .title-dept { font-size: 11px; font-weight: 800; color: #b45309; text-transform: uppercase; margin-top: 2px; }
     .faculty-title-box {
       background: #f1f5f9; border: 1px solid #cbd5e1; padding: 6px 12px; border-radius: 6px;
@@ -1137,73 +1359,109 @@ export function generatePrintableFacultyScheduleHtml(
       background: #eef2ff; border: 1px solid #c7d2fe; padding: 4px 8px; border-radius: 4px;
       font-size: 8px; color: #3730a3; font-weight: 600; margin-top: 4px;
     }
-    table.routine-table { width: 100%; border-collapse: collapse; margin-top: 8px; table-layout: fixed; }
+    table.routine-table { width: 100%; border-collapse: collapse; margin-top: 8px; table-layout: fixed; font-size: 9px; }
     .signatures {
-      display: flex; justify-content: space-between; margin-top: 20px; padding-top: 4px;
+      display: flex; justify-content: space-between; margin-top: 16px; padding-top: 4px;
       font-size: 9px; font-weight: 800; color: #0b1a2f; text-align: center;
     }
     .sig-box { width: 160px; border-top: 1px solid #0b1a2f; padding-top: 3px; }
+
+    @media print {
+      .no-print { display: none !important; }
+      body { background: white !important; margin: 0 !important; padding: 0 !important; }
+      .canvas-container { padding: 0 !important; overflow: visible !important; }
+      .wrapper {
+        border: none !important; box-shadow: none !important; height: auto !important;
+        margin: 0 !important; padding: 0 !important; max-width: 100% !important;
+        transform: none !important;
+      }
+      table.routine-table { font-size: 8px !important; }
+    }
   </style>
 </head>
 <body>
   <div class="no-print-toolbar no-print">
     <div style="display: flex; align-items: center; gap: 8px;">
-      <span style="font-weight: 800; color: #f59e0b;">INDIVIDUAL FACULTY CLASS TIME TABLE</span>
-      <span style="opacity: 0.8;">• ${facultyName} (${facultyDesignation})</span>
+      <span style="font-weight: 800; color: #f59e0b;">🏛️ INDIVIDUAL FACULTY CLASS TIME TABLE</span>
+      <span style="opacity: 0.85;">• ${facultyName} (${facultyDesignation})</span>
     </div>
     <div style="display: flex; align-items: center; gap: 6px;">
       <button class="btn-print" onclick="window.print()">
         🖨️ Print / Save as PDF
       </button>
+      <button class="btn-tool" onclick="zoom(0.1)" title="Zoom in">🔍 Zoom +</button>
+      <button class="btn-tool" onclick="zoom(-0.1)" title="Zoom out">🔍 Zoom -</button>
+      <button class="btn-tool" onclick="resetZoom()" title="Reset scale">↺ 100%</button>
     </div>
   </div>
 
-  <div class="wrapper">
-    <div class="header">
-      <div class="title-college">PANCHAYAT COLLEGE, BARAGADA (AUTONOMOUS)</div>
-      <div class="title-dept">DEPARTMENT OF MATHEMATICS • INDIVIDUAL FACULTY WORKLOAD &amp; ROUTINE</div>
-      
-      <div class="faculty-title-box">
-        <div>
-          <span style="font-size: 8px; text-transform: uppercase; color: #64748b; font-weight: 800; display: block;">FACULTY MEMBER &amp; CADRE:</span>
-          <span class="fac-name">${facultyName}</span>
-          <span class="fac-desig">• ${facultyDesignation}</span>
+  <div class="canvas-container">
+    <div id="faculty-wrapper" class="wrapper">
+      <div class="header">
+        <div class="title-college">PANCHAYAT COLLEGE, BARAGADA (AUTONOMOUS)</div>
+        <div class="title-dept">DEPARTMENT OF MATHEMATICS • INDIVIDUAL FACULTY WORKLOAD &amp; ROUTINE</div>
+        
+        <div class="faculty-title-box">
+          <div>
+            <span style="font-size: 8px; text-transform: uppercase; color: #64748b; font-weight: 800; display: block;">FACULTY MEMBER &amp; CADRE:</span>
+            <span class="fac-name">${facultyName}</span>
+            <span class="fac-desig">• ${facultyDesignation}</span>
+          </div>
+          <div class="meta-pills">
+            <span>WEEKLY CLASSES: <strong style="color: #b45309; font-size: 11px;">${totalClassesCount} CLASSES</strong></span>
+            <span>HOURS: <strong>${totalHours} HRS/WK</strong></span>
+            <span>BREAKDOWN: <strong>${theorySlots.length} Theory + ${practicalCount} Practical Periods</strong></span>
+            <span>SESSION: <strong>${academicSession}</strong></span>
+            <span>DAYS: <strong>MON – SAT</strong></span>
+          </div>
         </div>
-        <div class="meta-pills">
-          <span>WEEKLY CLASSES: <strong style="color: #b45309; font-size: 11px;">${totalClassesCount} CLASSES</strong></span>
-          <span>HOURS: <strong>${totalHours} HRS/WK</strong></span>
-          <span>BREAKDOWN: <strong>${theorySlots.length} Theory + ${practicalCount} Practical Periods</strong></span>
-          <span>SESSION: <strong>${academicSession}</strong></span>
-          <span>DAYS: <strong>MON – SAT</strong></span>
+        <div class="counting-rule-note">
+          ℹ️ Workload Counting: ${
+            isGuest
+              ? 'Guest Faculty — Practical lab sessions counted as existing (1 class per practical session).'
+              : `${facultyDesignation} — Each period of a practical class is counted as 1 class (${practicalCount} classes across practical periods).`
+          }
         </div>
       </div>
-      <div class="counting-rule-note">
-        ℹ️ Workload Counting: ${
-          isGuest
-            ? 'Guest Faculty — Practical lab sessions counted as existing (1 class per practical session).'
-            : `${facultyDesignation} — Each period of a practical class is counted as 1 class (${practicalCount} classes across practical periods).`
-        }
+
+      <table class="routine-table">
+        <thead>
+          <tr>
+            <th style="width: 75px; background-color: #0b1a2f; color: #fef08a; font-size: 9px; padding: 6px 2px;">DAY</th>
+            ${periodHeaderHtml}
+          </tr>
+        </thead>
+        <tbody>
+          ${dayRowsHtml}
+        </tbody>
+      </table>
+
+      <div class="signatures">
+        <div class="sig-box">Faculty Member<br><span style="font-weight: normal; font-size: 8px; color: #475569;">${facultyName}<br>(${facultyDesignation})</span></div>
+        <div class="sig-box">Head of Department<br><span style="font-weight: normal; font-size: 8px; color: #475569;">Dept. of Mathematics</span></div>
+        <div class="sig-box">Principal<br><span style="font-weight: normal; font-size: 8px; color: #475569;">Panchayat College, Baragada</span></div>
       </div>
-    </div>
-
-    <table class="routine-table">
-      <thead>
-        <tr>
-          <th style="width: 75px; background-color: #0b1a2f; color: #fef08a; font-size: 8.5px; padding: 6px 2px;">DAY</th>
-          ${periodHeaderHtml}
-        </tr>
-      </thead>
-      <tbody>
-        ${dayRowsHtml}
-      </tbody>
-    </table>
-
-    <div class="signatures">
-      <div class="sig-box">Faculty Member<br><span style="font-weight: normal; font-size: 8px; color: #475569;">${facultyName}<br>(${facultyDesignation})</span></div>
-      <div class="sig-box">Head of Department<br><span style="font-weight: normal; font-size: 8px; color: #475569;">Dept. of Mathematics</span></div>
-      <div class="sig-box">Principal<br><span style="font-weight: normal; font-size: 8px; color: #475569;">Panchayat College, Baragada</span></div>
     </div>
   </div>
+
+  <script>
+    let currentScale = 1;
+    function zoom(delta) {
+      currentScale = Math.max(0.6, Math.min(1.8, currentScale + delta));
+      const el = document.getElementById('faculty-wrapper');
+      if (el) {
+        el.style.transform = 'scale(' + currentScale + ')';
+        el.style.transformOrigin = 'top center';
+      }
+    }
+    function resetZoom() {
+      currentScale = 1;
+      const el = document.getElementById('faculty-wrapper');
+      if (el) {
+        el.style.transform = 'none';
+      }
+    }
+  </script>
 </body>
 </html>`;
 }

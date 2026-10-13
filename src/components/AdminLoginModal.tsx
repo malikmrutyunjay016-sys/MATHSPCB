@@ -310,12 +310,7 @@ export const AdminLoginModal: React.FC<AdminLoginModalProps> = ({
                   className="text-xs text-slate-400 hover:text-amber-300 transition cursor-pointer inline-flex items-center gap-1.5"
                 >
                   <KeyRound className="w-3.5 h-3.5 text-amber-400" />
-                  <span>
-                    Need to change or reset password?{' '}
-                    <strong className="text-amber-400 underline underline-offset-2">
-                      Use Key: MATHEMATICS
-                    </strong>
-                  </span>
+                  <span>Need to change or reset password?</span>
                 </button>
               </div>
 

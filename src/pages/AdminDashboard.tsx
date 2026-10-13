@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   ShieldCheck,
   Users,
@@ -268,16 +268,30 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     uniqueId: '',
   });
 
+  const liveBookCount = useMemo(
+    () => (books || []).reduce((acc, b) => acc + (Number(b.copies) || 1), 0),
+    [books]
+  );
+
   const [statsForm, setStatsForm] = useState({
-    facultyCount: settings.facultyCount || 6,
-    studentCount: settings.studentCount || 192,
+    facultyCount: (faculty && faculty.length) || settings.facultyCount || 6,
+    studentCount: (students && students.length) || settings.studentCount || 192,
     courseCount: settings.courseCount || 3,
-    bookCount: settings.bookCount || 1250,
+    bookCount: liveBookCount || settings.bookCount || 116,
     yearsOfService: settings.yearsOfService || 52,
     announcementMarquee: settings.announcementMarquee || '',
     studentPublicPrivacy: settings.studentPublicPrivacy ?? true,
     pyqUploadCode: settings.pyqUploadCode || 'Mathematics',
   });
+
+  useEffect(() => {
+    setStatsForm((prev) => ({
+      ...prev,
+      facultyCount: faculty.length,
+      studentCount: students.length,
+      bookCount: liveBookCount,
+    }));
+  }, [faculty.length, students.length, liveBookCount]);
 
   const [saveSuccessMsg, setSaveSuccessMsg] = useState('');
 
@@ -2337,9 +2351,14 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                       <div>
-                        <label className="block text-slate-700 font-semibold mb-1">
-                          Faculty Members
-                        </label>
+                        <div className="flex items-center justify-between mb-1">
+                          <label className="block text-slate-700 font-semibold">
+                            Faculty Members
+                          </label>
+                          <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-1.5 py-0.2 rounded" title="Auto-synced from live Faculty database">
+                            Real-Time: {faculty.length}
+                          </span>
+                        </div>
                         <input
                           type="number"
                           value={statsForm.facultyCount}
@@ -2351,9 +2370,14 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                       </div>
 
                       <div>
-                        <label className="block text-slate-700 font-semibold mb-1">
-                          Enrolled Students
-                        </label>
+                        <div className="flex items-center justify-between mb-1">
+                          <label className="block text-slate-700 font-semibold">
+                            Enrolled Students
+                          </label>
+                          <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-1.5 py-0.2 rounded" title="Auto-synced from live Student database">
+                            Real-Time: {students.length}
+                          </span>
+                        </div>
                         <input
                           type="number"
                           value={statsForm.studentCount}
@@ -2379,9 +2403,14 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                       </div>
 
                       <div>
-                        <label className="block text-slate-700 font-semibold mb-1">
-                          Library Volumes
-                        </label>
+                        <div className="flex items-center justify-between mb-1">
+                          <label className="block text-slate-700 font-semibold">
+                            Library Volumes
+                          </label>
+                          <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-1.5 py-0.2 rounded" title="Auto-synced from live Library book records">
+                            Real-Time: {liveBookCount}
+                          </span>
+                        </div>
                         <input
                           type="number"
                           value={statsForm.bookCount}

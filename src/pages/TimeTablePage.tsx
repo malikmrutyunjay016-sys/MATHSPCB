@@ -21,6 +21,7 @@ import {
   Settings,
   Undo2,
   Redo2,
+  ExternalLink,
 } from 'lucide-react';
 import { TimeTableSlot, DayOfWeek, TimeTablePeriod, TimeTableClassRow, Faculty } from '../types';
 import { useAuth } from '../context/AuthContext';
@@ -30,6 +31,7 @@ import {
   generatePrintableAllDaysMasterHtml,
   generatePrintableFacultyScheduleHtml,
   triggerDirectPrint,
+  openHtmlInNewTab,
   checkFacultyConflict,
   areTimesOverlapping,
   getMasterCellSpanInfo,
@@ -1319,16 +1321,17 @@ export const TimeTablePage: React.FC<TimeTablePageProps> = ({
 
       {/* ================= PRINT PREVIEW & EXPORT MODAL ================= */}
       {isPrintModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-xs animate-fadeIn print:hidden">
-          <div className="bg-white rounded-2xl w-full max-w-4xl max-h-[92vh] shadow-2xl border border-slate-200 overflow-hidden flex flex-col">
-            <div className="bg-[#0b1a2f] text-white p-4 sm:p-5 flex items-center justify-between">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-black/80 backdrop-blur-xs animate-fadeIn print:hidden">
+          <div className="bg-white rounded-2xl w-full max-w-7xl max-h-[96vh] shadow-2xl border border-slate-200 overflow-hidden flex flex-col">
+            {/* Header */}
+            <div className="bg-[#0b1a2f] text-white p-4 sm:p-5 flex items-center justify-between border-b border-slate-800">
               <div className="flex items-center gap-3">
-                <div className="w-9 h-9 rounded-xl bg-amber-500/20 border border-amber-400/30 flex items-center justify-center text-amber-300">
+                <div className="w-10 h-10 rounded-xl bg-amber-500/20 border border-amber-400/30 flex items-center justify-center text-amber-300">
                   <Printer className="w-5 h-5" />
                 </div>
                 <div>
-                  <h3 className="font-serif-academic text-base font-bold">
-                    Print & Export Official Time Table
+                  <h3 className="font-serif-academic text-base sm:text-lg font-bold">
+                    Official Time Table • Print &amp; Export
                   </h3>
                   <p className="text-xs text-slate-300">
                     Panchayat College, Baragada (Autonomous) • Department of Mathematics
@@ -1337,42 +1340,43 @@ export const TimeTablePage: React.FC<TimeTablePageProps> = ({
               </div>
               <button
                 onClick={() => setIsPrintModalOpen(false)}
-                className="p-1 rounded-lg text-slate-400 hover:text-white transition cursor-pointer"
+                className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800/60 transition cursor-pointer"
+                title="Close preview"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
             {/* Quick Action Ribbon */}
-            <div className="bg-slate-50 border-b border-slate-200 p-4 px-6 flex flex-wrap items-center justify-between gap-4">
-              <div className="flex flex-wrap items-center gap-3">
-                <span className="text-xs font-bold text-slate-700">Format to Print:</span>
+            <div className="bg-slate-50 border-b border-slate-200 p-3.5 sm:px-6 flex flex-wrap items-center justify-between gap-3">
+              <div className="flex flex-wrap items-center gap-2.5">
+                <span className="text-xs font-bold text-slate-700">Format:</span>
                 <select
                   value={printOption}
                   onChange={(e) => setPrintOption(e.target.value as any)}
-                  className="p-1.5 rounded-lg border border-slate-300 text-xs font-bold bg-white text-slate-900"
+                  className="p-2 rounded-xl border border-slate-300 text-xs font-bold bg-white text-slate-900 shadow-2xs focus:ring-2 focus:ring-amber-500 focus:outline-hidden"
                 >
                   <option value="all-days-master">
-                    🌟 Grand Master Time Table: All Days &amp; Every Class (Single Page)
+                    🌟 Grand Master Time Table: All Days &amp; Every Class (Single Page A3)
                   </option>
                   <option value="faculty">
-                    👤 Individual Faculty Routine: Filtered for Specific Teacher
+                    👤 Individual Faculty Routine: Filtered for Specific Teacher (A4 Landscape)
                   </option>
                   <option value="day-master">
-                    Day Master Grid: {activeDay} ({classRows.length} Classes in Rows)
+                    📅 Day Master Grid: {activeDay} ({classRows.length} Classes in Rows)
                   </option>
                   <option value="semester">
-                    Weekly Cohort Routine: {selectedCourse} {selectedYear} ({selectedSemester})
+                    🎓 Weekly Cohort Routine: {selectedCourse} {selectedYear} ({selectedSemester})
                   </option>
                 </select>
 
                 {printOption === 'faculty' && (
-                  <div className="flex items-center gap-2 bg-amber-50 p-1 px-2 rounded-lg border border-amber-300">
-                    <span className="text-xs font-bold text-amber-950">Faculty Member:</span>
+                  <div className="flex items-center gap-2 bg-amber-50/80 p-1 px-2.5 rounded-xl border border-amber-300 shadow-2xs">
+                    <span className="text-xs font-bold text-amber-950">Faculty:</span>
                     <select
                       value={selectedFacultyForPrint || availableFacultyNames[0] || ''}
                       onChange={(e) => setSelectedFacultyForPrint(e.target.value)}
-                      className="p-1 rounded text-xs font-bold bg-white border border-amber-300 text-slate-900 focus:outline-hidden"
+                      className="p-1 rounded-lg text-xs font-bold bg-white border border-amber-300 text-slate-900 focus:outline-hidden cursor-pointer"
                     >
                       {availableFacultyNames.map((fac) => (
                         <option key={fac} value={fac}>
@@ -1384,293 +1388,63 @@ export const TimeTablePage: React.FC<TimeTablePageProps> = ({
                 )}
               </div>
 
-              <div className="flex items-center gap-3">
+              {/* Action Buttons */}
+              <div className="flex flex-wrap items-center gap-2">
+                {/* Print Now Primary Button */}
+                <button
+                  onClick={handlePrintNow}
+                  className="px-4 py-2 bg-gradient-to-r from-amber-500 via-amber-400 to-amber-500 hover:from-amber-400 hover:to-amber-300 text-slate-950 font-black rounded-xl text-xs flex items-center gap-2 transition cursor-pointer shadow-md uppercase tracking-wider border border-amber-300"
+                  title="Print official routine immediately"
+                >
+                  <Printer className="w-4 h-4 text-slate-950" />
+                  <span>Print Now (1 Page)</span>
+                </button>
+
+                {/* Open in Full Browser Tab */}
+                <button
+                  onClick={() => openHtmlInNewTab(getActivePrintHtml())}
+                  className="px-3 py-2 bg-sky-900 hover:bg-sky-800 text-sky-200 border border-sky-600/40 rounded-xl text-xs font-bold flex items-center gap-1.5 cursor-pointer shadow-2xs transition"
+                  title="Open standalone document in new full browser tab"
+                >
+                  <ExternalLink className="w-3.5 h-3.5 text-sky-400" />
+                  <span>Open in Full Tab</span>
+                </button>
+
+                {/* Download HTML */}
                 <button
                   onClick={handleDownloadHtml}
-                  className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold flex items-center gap-2 cursor-pointer shadow-xs transition"
+                  className="px-3 py-2 bg-emerald-700 hover:bg-emerald-600 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 cursor-pointer shadow-2xs transition"
+                  title="Download as standalone HTML document"
                 >
-                  <Download className="w-4 h-4" />
-                  <span>Download HTML / PDF</span>
+                  <Download className="w-3.5 h-3.5" />
+                  <span>Download HTML</span>
                 </button>
               </div>
             </div>
 
-            {/* Interactive Preview Sheet */}
-            <div className="p-6 overflow-y-auto flex-1 bg-slate-100/60">
-              <div className="bg-white rounded-xl shadow-md border border-slate-300 p-8 max-w-5xl mx-auto text-slate-900 text-xs">
-                {/* College Letterhead */}
-                <div className="text-center border-b-2 border-slate-900 pb-4 mb-4">
-                  <div className="flex items-center justify-center gap-2 text-slate-900 font-bold uppercase tracking-wider text-sm sm:text-base">
-                    <Building className="w-5 h-5 text-amber-700" />
-                    <span>Panchayat College, Baragada (Autonomous)</span>
-                  </div>
-                  <h4 className="text-xs font-bold text-slate-700 uppercase mt-0.5">
-                    Department of Mathematics • Official Class Routine
-                  </h4>
-                  <div className="flex flex-wrap justify-center gap-4 mt-2 text-[11px] text-slate-600 font-semibold">
-                    {printOption === 'all-days-master' ? (
-                      <>
-                        <span>DAYS: <strong>MONDAY – SATURDAY (6 DAYS)</strong></span>
-                        <span>CLASSES: <strong>{classRows.length} Active Cohorts</strong></span>
-                        <span>PERIODS: <strong>{periods.length} Daily Sessions (9:15 AM – 5:30 PM)</strong></span>
-                        <span>SESSION: <strong>2026–2027</strong></span>
-                        <span>TOTAL CLASSES: <strong>{slots.length} Scheduled</strong></span>
-                      </>
-                    ) : printOption === 'faculty' ? (() => {
-                      const targetFacName = selectedFacultyForPrint || availableFacultyNames[0] || 'Teacher';
-                      const targetFacSlots = slots.filter((s) =>
-                        s.facultyName?.toLowerCase().includes(targetFacName.toLowerCase())
-                      );
-                      const facDesig = getFacultyDesignation(targetFacName, facultyList);
-                      const totalClassesCount = calculateFacultyTotalClasses(targetFacSlots, facDesig, facultyList);
-                      return (
-                        <>
-                          <span>FACULTY: <strong>{targetFacName} ({facDesig})</strong></span>
-                          <span>WEEKLY CLASSES: <strong>{totalClassesCount} Classes</strong></span>
-                          <span>WORKING DAYS: <strong>MONDAY – SATURDAY</strong></span>
-                          <span>SESSION: <strong>2026–2027</strong></span>
-                        </>
-                      );
-                    })() : printOption === 'day-master' ? (
-                      <>
-                        <span>DAY: <strong>{activeDay.toUpperCase()}</strong></span>
-                        <span>CLASSES: <strong>{classRows.length} Active Cohorts</strong></span>
-                        <span>SESSION: <strong>2026–2027</strong></span>
-                      </>
-                    ) : (
-                      <>
-                        <span>Course: <strong>{selectedCourse}</strong></span>
-                        <span>Year: <strong>{selectedYear}</strong></span>
-                        <span>Semester: <strong>{selectedSemester}</strong></span>
-                        <span>Session: <strong>2026–2027</strong></span>
-                      </>
-                    )}
-                  </div>
-                </div>
-
-                {/* Table Preview */}
-                <div className="overflow-x-auto">
-                  <table className="w-full border-collapse border border-slate-800 text-left text-[11px]">
-                    <thead>
-                      <tr className="bg-slate-900 text-white">
-                        <th className="p-2 border border-slate-700 text-left w-36">
-                          {printOption === 'all-days-master' ? 'DAY / CLASS' : printOption === 'day-master' ? 'CLASS / SEMESTER' : 'DAY'}
-                        </th>
-                        {periods.map((p) => (
-                          <th key={p.id} className="p-2 border border-slate-700 text-center">
-                            {p.label}
-                            <br />
-                            <span className="text-[9px] font-normal font-mono">
-                              {p.startTime} – {p.endTime}
-                            </span>
-                          </th>
-                        ))}
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {printOption === 'all-days-master' ? (
-                        DAYS_OF_WEEK.map((day) =>
-                          classRows.map((r, rIdx) => {
-                            const isFirstRowOfDay = rIdx === 0;
-                            return (
-                              <tr key={`${day}-${r.id}`} className="border-b border-slate-300">
-                                {isFirstRowOfDay && (
-                                  <td
-                                    rowSpan={classRows.length}
-                                    className="p-1 border border-slate-800 font-extrabold bg-[#0b1a2f] text-amber-300 text-center text-[10px] uppercase align-middle"
-                                    style={{
-                                      writingMode: 'vertical-rl',
-                                      transform: 'rotate(180deg)',
-                                      letterSpacing: '1px',
-                                      width: '26px',
-                                    }}
-                                  >
-                                    {day.slice(0, 3).toUpperCase()}
-                                  </td>
-                                )}
-                                <td className="p-1.5 border border-slate-400 font-bold bg-slate-50 text-[10px] w-32">
-                                  <div className="font-bold text-slate-900 leading-tight">{r.label}</div>
-                                  <div className="text-[8px] font-normal text-slate-500 leading-tight">{r.semester}</div>
-                                </td>
-                                {periods.map((p) => {
-                                  const cellSlots = slots.filter(
-                                    (s) =>
-                                      s.dayOfWeek === day &&
-                                      s.course === r.course &&
-                                      s.yearLevel === r.yearLevel &&
-                                      s.semester === r.semester &&
-                                      (s.periodNumber === p.periodNumber ||
-                                        areTimesOverlapping(s.startTime, s.endTime, p.startTime, p.endTime))
-                                  );
-                                  return (
-                                    <td key={p.id} className="p-1.5 border border-slate-300 align-top text-[9px]">
-                                      {cellSlots.length > 0 ? (
-                                        cellSlots.map((s) => (
-                                          <div key={s.id} className="space-y-0.5 leading-tight">
-                                            <div className="font-mono font-bold text-[9px] text-amber-800">
-                                              {s.paperCode}
-                                            </div>
-                                            <div className="font-semibold text-slate-900 truncate">{s.subjectName}</div>
-                                            <div className="text-[8px] text-blue-700 truncate">👤 {s.facultyName}</div>
-                                            <div className="text-[8px] text-slate-500">🏛️ {s.roomNo} <span className="italic">({s.type})</span></div>
-                                          </div>
-                                        ))
-                                      ) : (
-                                        <span className="text-slate-300 text-center block">—</span>
-                                      )}
-                                    </td>
-                                  );
-                                })}
-                              </tr>
-                            );
-                          })
-                        )
-                      ) : printOption === 'faculty' ? (
-                        DAYS_OF_WEEK.map((d) => {
-                          const targetFacName = selectedFacultyForPrint || availableFacultyNames[0] || 'Teacher';
-                          const targetFacNorm = targetFacName.toLowerCase();
-                          const facSlots = slots.filter(
-                            (s) =>
-                              s.dayOfWeek === d &&
-                              s.facultyName?.toLowerCase().includes(targetFacNorm)
-                          );
-                          const facDesig = getFacultyDesignation(targetFacName, facultyList);
-                          const dayClassesCount = facSlots.reduce(
-                            (sum, s) => sum + countSlotClasses(s, facDesig, facultyList),
-                            0
-                          );
-                          return (
-                            <tr key={d} className="border-b border-slate-300">
-                              <td className="p-2 border border-slate-400 font-bold bg-slate-100 text-center text-[10px]">
-                                {d.toUpperCase()}
-                                <div className="text-[8px] font-normal text-slate-500">
-                                  ({dayClassesCount} class{dayClassesCount === 1 ? '' : 'es'})
-                                </div>
-                              </td>
-                              {periods.map((p) => {
-                                const match = facSlots.find(
-                                  (s) =>
-                                    s.periodNumber === p.periodNumber ||
-                                    areTimesOverlapping(s.startTime, s.endTime, p.startTime, p.endTime)
-                                );
-                                return (
-                                  <td key={p.id} className="p-2 border border-slate-300 align-top">
-                                    {match ? (
-                                      <div className="space-y-0.5">
-                                        <div className="font-mono font-bold text-[10px] text-amber-800">
-                                          {match.paperCode}
-                                        </div>
-                                        <div className="font-semibold text-slate-900">{match.subjectName}</div>
-                                        <div className="text-[10px] text-sky-900 font-medium">
-                                          {match.course} ({match.yearLevel} - {match.semester})
-                                        </div>
-                                        <div className="text-[9px] text-slate-500">🏛️ {match.roomNo} ({match.type})</div>
-                                      </div>
-                                    ) : (
-                                      <span className="text-slate-300 text-center block">—</span>
-                                    )}
-                                  </td>
-                                );
-                              })}
-                            </tr>
-                          );
-                        })
-                      ) : printOption === 'day-master' ? (
-                        classRows.map((r) => (
-                          <tr key={r.id} className="border-b border-slate-300">
-                            <td className="p-2 border border-slate-400 font-bold bg-slate-50 text-[10px]">
-                              {r.label || `${r.course} - ${r.yearLevel}`}
-                            </td>
-                            {periods.map((p) => {
-                              const cellSlots = getSlotsForMasterCell(r, p);
-                              return (
-                                <td key={p.id} className="p-2 border border-slate-300 align-top">
-                                  {cellSlots.length > 0 ? (
-                                    cellSlots.map((s) => (
-                                      <div key={s.id} className="space-y-0.5">
-                                        <div className="font-mono font-bold text-[10px] text-amber-800">
-                                          {s.paperCode}
-                                        </div>
-                                        <div className="font-semibold text-slate-900">{s.subjectName}</div>
-                                        <div className="text-[10px] text-slate-600">👤 {s.facultyName}</div>
-                                        <div className="text-[9px] text-slate-500">🏛️ {s.roomNo}</div>
-                                      </div>
-                                    ))
-                                  ) : (
-                                    <span className="text-slate-300 text-center block">—</span>
-                                  )}
-                                </td>
-                              );
-                            })}
-                          </tr>
-                        ))
-                      ) : (
-                        DAYS_OF_WEEK.map((d) => (
-                          <tr key={d} className="border-b border-slate-300">
-                            <td className="p-2 border border-slate-400 font-bold bg-slate-100 text-center text-[10px]">
-                              {d.toUpperCase()}
-                            </td>
-                            {periods.map((p) => {
-                              const cellSlots = getSlotsForSemesterCell(d, p);
-                              return (
-                                <td key={p.id} className="p-2 border border-slate-300 align-top">
-                                  {cellSlots.length > 0 ? (
-                                    cellSlots.map((s) => (
-                                      <div key={s.id} className="space-y-0.5">
-                                        <div className="font-mono font-bold text-[10px] text-amber-800">
-                                          {s.paperCode}
-                                        </div>
-                                        <div className="font-semibold text-slate-900">{s.subjectName}</div>
-                                        <div className="text-[10px] text-slate-600">👤 {s.facultyName}</div>
-                                        <div className="text-[9px] text-slate-500">🏛️ {s.roomNo}</div>
-                                      </div>
-                                    ))
-                                  ) : (
-                                    <span className="text-slate-300 text-center block">—</span>
-                                  )}
-                                </td>
-                              );
-                            })}
-                          </tr>
-                        ))
-                      )}
-                    </tbody>
-                  </table>
-                </div>
-
-                {/* Signatures */}
-                <div className="mt-10 pt-4 flex justify-between items-center text-[11px] font-bold text-center">
-                  <div className="w-40 border-t border-slate-800 pt-1">
-                    Head of Department
-                    <br />
-                    <span className="font-normal text-[10px] text-slate-600">
-                      Dept. of Mathematics
-                    </span>
-                  </div>
-                  <div className="w-40 border-t border-slate-800 pt-1">
-                    Academic Bursar
-                    <br />
-                    <span className="font-normal text-[10px] text-slate-600">Panchayat College</span>
-                  </div>
-                  <div className="w-40 border-t border-slate-800 pt-1">
-                    Principal
-                    <br />
-                    <span className="font-normal text-[10px] text-slate-600">
-                      Panchayat College, Baragada
-                    </span>
-                  </div>
-                </div>
+            {/* High-Fidelity Print Preview Canvas */}
+            <div className="flex-1 p-2 sm:p-4 bg-slate-100 flex flex-col min-h-[580px] overflow-hidden">
+              <div className="bg-white rounded-xl shadow-inner border border-slate-300 overflow-hidden flex-1 flex flex-col">
+                <iframe
+                  key={`${printOption}-${selectedFacultyForPrint || ''}-${selectedCourse}-${selectedSemester}-${activeDay}-${slots.length}`}
+                  srcDoc={getActivePrintHtml()}
+                  title="Official Academic Class Routine Preview"
+                  className="w-full flex-1 border-0 min-h-[560px] bg-white"
+                />
               </div>
             </div>
 
-            <div className="p-4 bg-slate-50 border-t border-slate-200 flex justify-between items-center">
-              <div className="text-[11px] text-slate-500 flex items-center gap-1.5">
-                <FileText className="w-4 h-4 text-slate-400" />
-                <span>Tip: Direct print uses isolated frame rendering to guarantee clean output in any browser.</span>
+            {/* Footer with helpful tips */}
+            <div className="p-3.5 px-6 bg-slate-50 border-t border-slate-200 flex flex-wrap justify-between items-center gap-2">
+              <div className="text-[11px] text-slate-600 flex items-center gap-1.5 font-medium">
+                <FileText className="w-4 h-4 text-amber-600 shrink-0" />
+                <span>
+                  Official Academic Format • Grand Master fits strictly on 1 sheet (A3 landscape). Faculty routine fits on 1 sheet (A4 landscape).
+                </span>
               </div>
               <button
                 onClick={() => setIsPrintModalOpen(false)}
-                className="px-4 py-2 border border-slate-300 rounded-xl text-xs font-semibold text-slate-700 hover:bg-slate-100 cursor-pointer"
+                className="px-4 py-1.5 border border-slate-300 rounded-xl text-xs font-semibold text-slate-700 hover:bg-slate-100 cursor-pointer transition"
               >
                 Close
               </button>
