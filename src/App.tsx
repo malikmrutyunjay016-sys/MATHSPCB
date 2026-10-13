@@ -128,6 +128,10 @@ import { testConnection } from './firebase/config';
 
 function AppContent() {
   const [activeTab, setActiveTab] = useState<string>('home');
+  const handleNavigate = (tab: string) => {
+    setActiveTab(tab);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
   const {
     isAdmin,
     isAdminLoginModalOpen,
@@ -852,7 +856,7 @@ function AppContent() {
       <main className="flex-1">
         {activeTab === 'home' && (
           <HomePage
-            onNavigate={setActiveTab}
+            onNavigate={handleNavigate}
             notices={notices}
             faculty={faculty}
             settings={settings}
@@ -1217,10 +1221,7 @@ function AppContent() {
 
       {/* Footer */}
       <Footer
-        onNavigate={(tab) => {
-          setActiveTab(tab);
-          window.scrollTo({ top: 0, behavior: 'smooth' });
-        }}
+        onNavigate={handleNavigate}
       />
 
       {/* Search Modal */}
@@ -1233,14 +1234,14 @@ function AppContent() {
         pyq={pyq}
         notices={notices}
         committees={committees}
-        onNavigate={setActiveTab}
+        onNavigate={handleNavigate}
       />
 
       {/* FAQ Modal */}
       <FAQModal
         isOpen={faqModalOpen}
         onClose={() => setFaqModalOpen(false)}
-        onNavigate={setActiveTab}
+        onNavigate={handleNavigate}
       />
 
       {/* Admin Login & Master Password Change Modal */}

@@ -167,6 +167,9 @@ export interface DepartmentSettings {
   announcementMarquee: string;
   pyqUploadCode?: string; // Code for student question paper uploads (default 'Mathematics', editable by admin)
   logoUrl?: string; // Custom logo URL or data URI
+  welcomeTitle?: string;
+  welcomeDescription?: string;
+  hodQuote?: string;
   adminId?: string;
   adminPassword?: string;
   updatedAt?: string;

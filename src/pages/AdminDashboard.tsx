@@ -298,6 +298,9 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     studentPublicPrivacy: settings.studentPublicPrivacy ?? true,
     pyqUploadCode: settings.pyqUploadCode || 'Mathematics',
     logoUrl: settings.logoUrl || '',
+    welcomeTitle: settings.welcomeTitle || '',
+    welcomeDescription: settings.welcomeDescription || '',
+    hodQuote: settings.hodQuote || '',
   });
 
   useEffect(() => {
@@ -2573,6 +2576,44 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                             }
                           }}
                           className="text-xs text-slate-500 file:mr-4 file:py-1.5 file:px-3 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-amber-50 file:text-amber-700 hover:file:bg-amber-100 cursor-pointer"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="bg-slate-50 p-5 rounded-xl border border-slate-200 space-y-4">
+                    <h3 className="font-bold text-slate-800 uppercase tracking-wider text-[11px]">
+                      Welcome & Department Philosophy Section Content
+                    </h3>
+                    <div className="space-y-3">
+                      <div>
+                        <label className="block text-slate-700 font-semibold mb-1 text-xs">Section Heading Title</label>
+                        <input
+                          type="text"
+                          value={statsForm.welcomeTitle}
+                          onChange={(e) => setStatsForm({ ...statsForm, welcomeTitle: e.target.value })}
+                          placeholder="e.g. Shaping Analytical Thinkers..."
+                          className="w-full p-2.5 rounded-lg border border-slate-200 text-xs bg-white"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-slate-700 font-semibold mb-1 text-xs">Section Description Paragraph</label>
+                        <textarea
+                          rows={3}
+                          value={statsForm.welcomeDescription}
+                          onChange={(e) => setStatsForm({ ...statsForm, welcomeDescription: e.target.value })}
+                          placeholder="Detailed description of department..."
+                          className="w-full p-2.5 rounded-lg border border-slate-200 text-xs bg-white resize-y"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-slate-700 font-semibold mb-1 text-xs">Head of Department (HOD) Quote</label>
+                        <textarea
+                          rows={2}
+                          value={statsForm.hodQuote}
+                          onChange={(e) => setStatsForm({ ...statsForm, hodQuote: e.target.value })}
+                          placeholder="Quote from HOD..."
+                          className="w-full p-2.5 rounded-lg border border-slate-200 text-xs bg-white resize-y"
                         />
                       </div>
                     </div>

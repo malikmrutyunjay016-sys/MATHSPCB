@@ -141,7 +141,10 @@ export const QuickAccessCards: React.FC<QuickAccessCardsProps> = ({
             return (
               <div
                 key={card.id}
-                onClick={() => onNavigate(card.id)}
+                onClick={() => {
+                  onNavigate(card.id);
+                  window.scrollTo({ top: 0, behavior: 'smooth' });
+                }}
                 className={`group bg-white rounded-xl p-5 border border-slate-200 hover:border-blue-400 border-l-4 ${card.accent} shadow-2xs hover:shadow-lg transition-all duration-300 transform hover:-translate-y-1 cursor-pointer flex flex-col justify-between`}
               >
                 <div>
