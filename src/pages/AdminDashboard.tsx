@@ -485,7 +485,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
       setGateSuccess('');
       if (gateMasterKey.trim() !== MASTER_ADMIN_KEY) {
         setGateError(
-          'Invalid Master Key. Authorization key "MATHEMATICS" is strictly required to change administrator password.'
+          'Invalid Master Permission Key. Please provide the authorized key.'
         );
         return;
       }
@@ -544,15 +544,22 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
             <p className="text-xs text-slate-400 leading-relaxed max-w-sm mx-auto">
               {gateMode === 'login'
                 ? 'Access to this console is strictly restricted to department administrators possessing verified credentials.'
-                : 'Authorization key "MATHEMATICS" is required to change or reset the administrator password.'}
+                : 'Confidential Master Permission Key is required to change or reset the administrator password.'}
             </p>
           </div>
 
           {/* Feedback messages */}
           {gateError && (
-            <div className="p-3 rounded-lg bg-rose-950/60 border border-rose-800 text-rose-200 text-xs flex items-start gap-2">
-              <span className="font-bold text-rose-400">✕</span>
-              <span className="leading-relaxed">{gateError}</span>
+            <div className="p-3 rounded-lg bg-rose-950/60 border border-rose-800 text-rose-200 text-xs flex flex-col gap-1.5">
+              <div className="flex items-start gap-2">
+                <span className="font-bold text-rose-400">✕</span>
+                <span className="leading-relaxed">{gateError}</span>
+              </div>
+              {gateError.includes('Authorized Domains') && (
+                <div className="mt-1 pt-1.5 border-t border-rose-800/60 text-[11px] text-amber-300">
+                  Tip: You can log in right now using Administrator ID <strong>Admin123</strong> and your password below.
+                </div>
+              )}
             </div>
           )}
 
@@ -646,24 +653,32 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                   className="text-xs text-slate-400 hover:text-amber-300 transition cursor-pointer inline-flex items-center gap-1.5"
                 >
                   <KeyRound className="w-3.5 h-3.5 text-amber-400" />
-                  <span>
-                    Need to change or reset password?{' '}
-                    <strong className="text-amber-400 underline underline-offset-2">
-                      Use Key: MATHEMATICS
-                    </strong>
-                  </span>
+                  <span>Need to change or reset password?</span>
                 </button>
               </div>
 
               <div className="pt-2 border-t border-slate-700/80">
                 <button
                   type="button"
+                  disabled={gateLoading}
                   onClick={async () => {
+                    setGateError('');
+                    setGateSuccess('');
+                    setGateLoading(true);
                     try {
-                      await signInWithGoogle();
-                    } catch {}
+                      const res = await signInWithGoogle();
+                      if (res.success) {
+                        setGateSuccess('Signed in with Google successfully! Loading dashboard...');
+                      } else if (res.error) {
+                        setGateError(res.error);
+                      }
+                    } catch (err: any) {
+                      setGateError(err?.message || 'Google Sign-In failed.');
+                    } finally {
+                      setGateLoading(false);
+                    }
                   }}
-                  className="w-full py-2 px-3 bg-slate-900 hover:bg-slate-700 text-slate-300 hover:text-white rounded-lg text-xs font-medium border border-slate-700 flex items-center justify-center gap-2 transition cursor-pointer"
+                  className="w-full py-2 px-3 bg-slate-900 hover:bg-slate-700 text-slate-300 hover:text-white rounded-lg text-xs font-medium border border-slate-700 flex items-center justify-center gap-2 transition cursor-pointer disabled:opacity-50"
                 >
                   <LogIn className="w-3.5 h-3.5 text-blue-400" />
                   <span>Google Sign In</span>
@@ -677,10 +692,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                   <Sparkles className="w-3.5 h-3.5" />
                   <span>Master Authorization Required</span>
                 </div>
-                Enter the Master Permission Key:
-                <span className="font-mono font-bold text-white bg-slate-900 px-1.5 py-0.5 rounded ml-1 border border-amber-600/50">
-                  MATHEMATICS
-                </span>
+                Enter the confidential Master Permission Key provided to the department administrator.
               </div>
 
               <div>
@@ -692,7 +704,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                   required
                   value={gateMasterKey}
                   onChange={(e) => setGateMasterKey(e.target.value)}
-                  placeholder="Enter Key: MATHEMATICS"
+                  placeholder="Enter Master Permission Key"
                   className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-sm text-white font-mono tracking-wider placeholder-slate-500 focus:outline-hidden focus:border-amber-400"
                   autoFocus
                 />
@@ -811,7 +823,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
           <button
             onClick={() => setActiveSection('settings')}
             className="px-3.5 py-1.5 bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 border border-amber-500/30 text-xs font-semibold rounded-lg flex items-center gap-1.5 transition cursor-pointer"
-            title="Change administrator password with master key 'MATHEMATICS'"
+            title="Change administrator password"
           >
             <KeyRound className="w-3.5 h-3.5 text-amber-400" />
             <span>Change Password</span>
@@ -2563,7 +2575,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                       <span>Master Key Protection Policy</span>
                     </div>
                     <p className="leading-relaxed">
-                      To prevent unauthorized changes, only administrators with the master verification key <strong>"MATHEMATICS"</strong> are permitted to change or reset the administrator password. No one without this key and credentials can access or modify administrative privileges.
+                      To prevent unauthorized changes, only administrators with the confidential master verification key are permitted to change or reset the administrator password. No one without this authorized key and credentials can access or modify administrative privileges.
                     </p>
                   </div>
 
@@ -2574,7 +2586,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                       setSettingsPassSuccess('');
                       if (settingsMasterKey.trim() !== MASTER_ADMIN_KEY) {
                         setSettingsPassError(
-                          'Invalid Master Permission Key. Authorization key "MATHEMATICS" is required.'
+                          'Invalid Master Permission Key. Please provide the authorized master key.'
                         );
                         return;
                       }
@@ -2620,11 +2632,11 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                           required
                           value={settingsMasterKey}
                           onChange={(e) => setSettingsMasterKey(e.target.value)}
-                          placeholder="Enter key: MATHEMATICS"
+                          placeholder="Enter Master Permission Key"
                           className="w-full p-2.5 rounded-lg border border-slate-700 bg-slate-950 text-white font-mono tracking-wider focus:border-amber-400 focus:outline-hidden"
                         />
                         <span className="text-[10px] text-slate-400 mt-1 block">
-                          Must match: <strong>MATHEMATICS</strong>
+                          Confidential administrator authorization key required
                         </span>
                       </div>
 
@@ -2677,6 +2689,36 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                       </button>
                     </div>
                   </form>
+
+                  {/* Published Site & Google Auth Domain Guide */}
+                  <div className="pt-4 border-t border-slate-800 space-y-3">
+                    <div className="flex items-center gap-2 text-xs font-bold text-slate-200">
+                      <LogIn className="w-4 h-4 text-blue-400" />
+                      <span>Google Sign-In & Published Site Domain Settings</span>
+                    </div>
+                    <div className="p-3.5 rounded-xl bg-slate-950/70 border border-slate-800 text-xs text-slate-400 space-y-2">
+                      <div className="flex items-center justify-between flex-wrap gap-2">
+                        <span className="text-slate-300">Current Site Domain:</span>
+                        <code className="px-2 py-0.5 rounded bg-slate-900 border border-slate-700 font-mono text-amber-300 text-[11px]">
+                          {typeof window !== 'undefined' ? window.location.hostname : 'localhost'}
+                        </code>
+                      </div>
+                      <p className="text-[11px] leading-relaxed">
+                        To enable Google Sign-In on published sites (e.g. Cloud Run, Vercel, or custom domains), Firebase requires the domain to be listed in Authorized Domains.
+                      </p>
+                      <div className="p-2.5 rounded bg-blue-950/40 border border-blue-900/60 text-[11px] text-blue-200 space-y-1">
+                        <div className="font-semibold text-blue-300">How to authorize your published domain:</div>
+                        <ol className="list-decimal list-inside space-y-0.5 text-slate-300">
+                          <li>Open <span className="font-mono text-white">Firebase Console &gt; Authentication</span></li>
+                          <li>Click the <span className="font-semibold text-white">Settings</span> tab &gt; <span className="font-semibold text-white">Authorized domains</span></li>
+                          <li>Click <span className="font-semibold text-white">Add domain</span> and paste: <span className="font-mono text-amber-300">{typeof window !== 'undefined' ? window.location.hostname : 'your-domain'}</span></li>
+                        </ol>
+                      </div>
+                      <p className="text-[11px] text-slate-400">
+                        ✨ <em>Note:</em> Administrator ID (<span className="font-mono text-amber-300">Admin123</span>) and password authentication works unconditionally across all environments and does not require domain registration.
+                      </p>
+                    </div>
+                  </div>
                 </div>
               </div>
             )}

@@ -259,7 +259,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                           }}
                           className="w-full flex items-center justify-center gap-1.5 py-1.5 px-3 bg-slate-800 hover:bg-slate-700 text-amber-300 border border-slate-700 rounded text-xs transition cursor-pointer"
                         >
-                          <KeyRound className="w-3.5 h-3.5 text-amber-400" /> Change Password (Key: MATHEMATICS)
+                          <KeyRound className="w-3.5 h-3.5 text-amber-400" /> Change Administrator Password
                         </button>
 
                         {!user && (
@@ -267,8 +267,19 @@ export const Navbar: React.FC<NavbarProps> = ({
                             onClick={async () => {
                               setShowAdminDropdown(false);
                               try {
-                                await signInWithGoogle();
-                              } catch {}
+                                const res = await signInWithGoogle();
+                                if (!res.success && res.error) {
+                                  openAdminLoginModal({
+                                    startMode: 'login',
+                                    authErrorMessage: res.error,
+                                  });
+                                }
+                              } catch (err: any) {
+                                openAdminLoginModal({
+                                  startMode: 'login',
+                                  authErrorMessage: err?.message || 'Google Sign-In failed.',
+                                });
+                              }
                             }}
                             className="w-full flex items-center justify-center gap-2 py-1.5 px-3 bg-blue-600/80 hover:bg-blue-600 text-white rounded font-medium text-xs transition cursor-pointer"
                           >

@@ -30,7 +30,15 @@ export const AdminLoginModal: React.FC<AdminLoginModalProps> = ({
   initialMode = 'login',
   onLoginSuccess,
 }) => {
-  const { loginAsAdmin, changeAdminPassword, signInWithGoogle, user, isAdmin } = useAuth();
+  const {
+    loginAsAdmin,
+    changeAdminPassword,
+    signInWithGoogle,
+    user,
+    isAdmin,
+    authBannerMessage,
+    setAuthBannerMessage,
+  } = useAuth();
 
   const [mode, setMode] = useState<'login' | 'change_password'>(initialMode);
   
@@ -51,15 +59,18 @@ export const AdminLoginModal: React.FC<AdminLoginModalProps> = ({
   useEffect(() => {
     if (isOpen) {
       setMode(initialMode);
-      setErrorMessage('');
+      setErrorMessage(authBannerMessage || '');
       setSuccessMessage('');
       setAdminId('');
       setAdminPassword('');
       setMasterKey('');
       setNewPassword('');
       setConfirmPassword('');
+      if (authBannerMessage) {
+        setAuthBannerMessage('');
+      }
     }
-  }, [isOpen, initialMode]);
+  }, [isOpen, initialMode, authBannerMessage, setAuthBannerMessage]);
 
   if (!isOpen) return null;
 
@@ -108,7 +119,7 @@ export const AdminLoginModal: React.FC<AdminLoginModalProps> = ({
 
     if (masterKey.trim() !== MASTER_ADMIN_KEY) {
       setErrorMessage(
-        'Invalid Master Permission Key. The key "MATHEMATICS" is required to change administrator password.'
+        'Invalid Master Permission Key. Please provide the authorized Master Permission Key.'
       );
       return;
     }
@@ -201,9 +212,16 @@ export const AdminLoginModal: React.FC<AdminLoginModalProps> = ({
         <div className="p-6 space-y-4">
           {/* Notifications */}
           {errorMessage && (
-            <div className="p-3 rounded-lg bg-rose-950/50 border border-rose-800 text-rose-200 text-xs flex items-start gap-2.5">
-              <AlertCircle className="w-4 h-4 text-rose-400 shrink-0 mt-0.5" />
-              <div className="leading-relaxed">{errorMessage}</div>
+            <div className="p-3 rounded-lg bg-rose-950/60 border border-rose-800 text-rose-200 text-xs flex flex-col gap-1.5">
+              <div className="flex items-start gap-2.5">
+                <AlertCircle className="w-4 h-4 text-rose-400 shrink-0 mt-0.5" />
+                <div className="leading-relaxed">{errorMessage}</div>
+              </div>
+              {errorMessage.includes('Authorized Domains') && (
+                <div className="mt-1 pt-1.5 border-t border-rose-800/60 text-[11px] text-amber-300">
+                  Tip: You can log in right now using Administrator ID <strong>Admin123</strong> and your password above.
+                </div>
+              )}
             </div>
           )}
 
@@ -318,15 +336,29 @@ export const AdminLoginModal: React.FC<AdminLoginModalProps> = ({
               <div className="pt-2 border-t border-slate-800/80">
                 <button
                   type="button"
+                  disabled={isSubmitting}
                   onClick={async () => {
+                    setErrorMessage('');
+                    setSuccessMessage('');
+                    setIsSubmitting(true);
                     try {
-                      await signInWithGoogle();
-                      onClose();
-                    } catch {
-                      // Handled
+                      const res = await signInWithGoogle();
+                      if (res.success) {
+                        setSuccessMessage('Signed in with Google successfully!');
+                        setTimeout(() => {
+                          onClose();
+                          if (onLoginSuccess) onLoginSuccess();
+                        }, 500);
+                      } else if (res.error) {
+                        setErrorMessage(res.error);
+                      }
+                    } catch (err: any) {
+                      setErrorMessage(err?.message || 'Google Sign-In failed.');
+                    } finally {
+                      setIsSubmitting(false);
                     }
                   }}
-                  className="w-full py-2 px-3 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white rounded-lg text-xs font-medium border border-slate-700 flex items-center justify-center gap-2 transition cursor-pointer"
+                  className="w-full py-2 px-3 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white rounded-lg text-xs font-medium border border-slate-700 flex items-center justify-center gap-2 transition cursor-pointer disabled:opacity-50"
                 >
                   <LogIn className="w-3.5 h-3.5 text-blue-400" />
                   <span>Sign in with Google</span>
@@ -341,10 +373,7 @@ export const AdminLoginModal: React.FC<AdminLoginModalProps> = ({
                   <Sparkles className="w-3.5 h-3.5" />
                   <span>Master Key Authorization Required</span>
                 </div>
-                To change or reset the administrator password, enter the Master Permission Key:
-                <span className="font-mono font-bold text-white bg-slate-800 px-1.5 py-0.5 rounded ml-1 border border-amber-600/50">
-                  MATHEMATICS
-                </span>
+                To change or reset the administrator password, enter the confidential Master Permission Key provided to the department administrator.
               </div>
 
               <div>
@@ -356,7 +385,7 @@ export const AdminLoginModal: React.FC<AdminLoginModalProps> = ({
                   required
                   value={masterKey}
                   onChange={(e) => setMasterKey(e.target.value)}
-                  placeholder="Enter Master Key: MATHEMATICS"
+                  placeholder="Enter Master Permission Key"
                   className="w-full px-3 py-2.5 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white placeholder-slate-500 focus:outline-hidden focus:border-amber-400 focus:ring-1 focus:ring-amber-400 font-mono tracking-wider transition"
                   autoFocus
                 />

@@ -7,8 +7,22 @@ const app = initializeApp(firebaseConfig);
 const databaseId = (firebaseConfig as any).firestoreDatabaseId;
 export const db = databaseId ? getFirestore(app, databaseId) : getFirestore(app);
 export const auth = getAuth(app);
-export const googleProvider = new GoogleAuthProvider();
-googleProvider.addScope('https://www.googleapis.com/auth/drive.file');
+
+// Standard Google Auth provider for authentication (basic profile & email only)
+export const googleAuthProvider = new GoogleAuthProvider();
+googleAuthProvider.setCustomParameters({
+  prompt: 'select_account',
+});
+
+// Dedicated Google Drive provider requested ONLY for question paper drive uploads
+export const googleDriveProvider = new GoogleAuthProvider();
+googleDriveProvider.addScope('https://www.googleapis.com/auth/drive.file');
+googleDriveProvider.setCustomParameters({
+  prompt: 'consent',
+});
+
+// Backwards-compatible alias for standard authentication
+export const googleProvider = googleAuthProvider;
 
 // In-memory access token cache (never stored in localStorage/sessionStorage)
 let inMemoryAccessToken: string | null = null;

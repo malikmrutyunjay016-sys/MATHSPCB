@@ -1087,7 +1087,7 @@ export async function updateDepartmentSettings(settings: Partial<DepartmentSetti
 // ------------------- ADMIN AUTHENTICATION & PASSWORD SECURITY -------------------
 export const DEFAULT_ADMIN_ID = 'Admin123';
 export const DEFAULT_ADMIN_PASSWORD = 'Maths.pcb@123';
-export const MASTER_ADMIN_KEY = 'MATHEMATICS';
+export const MASTER_ADMIN_KEY = '762016';
 
 /**
  * Retrieves the current admin password from Firestore, fallback to localStorage or default.
@@ -1144,7 +1144,7 @@ export async function verifyAdminCredentials(
   if (cleanPass !== currentPassword) {
     return {
       success: false,
-      error: 'Incorrect administrator password. If you forgot your password, use the master key "MATHEMATICS" to change or reset it.',
+      error: 'Incorrect administrator password. If you forgot your password, use the Master Permission Key to change or reset it.',
     };
   }
 
@@ -1152,7 +1152,7 @@ export async function verifyAdminCredentials(
 }
 
 /**
- * Changes or resets the administrator password using the master permission key "MATHEMATICS".
+ * Changes or resets the administrator password using the confidential master permission key.
  * This allows the admin to change their password securely.
  */
 export async function updateAdminPasswordWithMasterKey(
@@ -1165,7 +1165,7 @@ export async function updateAdminPasswordWithMasterKey(
   if (cleanKey !== MASTER_ADMIN_KEY) {
     return {
       success: false,
-      error: 'Invalid Master Permission Key. The master authorization key "MATHEMATICS" is strictly required to change or reset administrator password.',
+      error: 'Invalid Master Permission Key. The master authorization key is strictly required to change or reset administrator password.',
     };
   }
 
@@ -1187,7 +1187,7 @@ export async function updateAdminPasswordWithMasterKey(
       adminId: DEFAULT_ADMIN_ID,
       password: cleanPass,
       updatedAt: new Date().toISOString(),
-      updatedVia: 'master_key_MATHEMATICS',
+      updatedVia: 'master_key_762016',
     }, { merge: true });
 
     const genRef = doc(db, 'department_settings', 'general');
