@@ -1,0 +1,338 @@
+{
+  "entities": {
+    "Faculty": {
+      "title": "Faculty",
+      "description": "Faculty member profile in the Department of Mathematics",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string", "maxLength": 100 },
+        "designation": { "type": "string", "maxLength": 80 },
+        "qualification": { "type": "string", "maxLength": 120 },
+        "specialization": { "type": "string", "maxLength": 150 },
+        "email": { "type": "string", "maxLength": 100 },
+        "phone": { "type": "string", "maxLength": 25 },
+        "profile": { "type": "string", "maxLength": 1000 },
+        "publications": { "type": "string", "maxLength": 1000 },
+        "photoUrl": { "type": "string", "maxLength": 500 },
+        "order": { "type": "number" },
+        "createdAt": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["name", "designation", "qualification", "specialization", "email"]
+    },
+    "Student": {
+      "title": "Student",
+      "description": "Student record enrolled in the Department of Mathematics",
+      "type": "object",
+      "properties": {
+        "rollNumber": { "type": "string", "maxLength": 30 },
+        "registrationNumber": { "type": "string", "maxLength": 40 },
+        "name": { "type": "string", "maxLength": 100 },
+        "fatherMotherName": { "type": "string", "maxLength": 100 },
+        "gender": { "type": "string", "maxLength": 20 },
+        "dob": { "type": "string", "maxLength": 20 },
+        "course": { "type": "string", "maxLength": 60 },
+        "academicYear": { "type": "string", "maxLength": 30 },
+        "yearLevel": { "type": "string", "maxLength": 20 },
+        "semester": { "type": "string", "maxLength": 20 },
+        "mobile": { "type": "string", "maxLength": 25 },
+        "email": { "type": "string", "maxLength": 100 },
+        "address": { "type": "string", "maxLength": 300 },
+        "admissionYear": { "type": "string", "maxLength": 10 },
+        "category": { "type": "string", "maxLength": 20 },
+        "photoUrl": { "type": "string", "maxLength": 500 },
+        "academicStatus": { "type": "string", "maxLength": 30 },
+        "createdAt": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["rollNumber", "name", "course", "academicYear", "yearLevel", "semester"]
+    },
+    "Facility": {
+      "title": "Facility",
+      "description": "Departmental infrastructure and facilities",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string", "maxLength": 100 },
+        "category": { "type": "string", "maxLength": 50 },
+        "description": { "type": "string", "maxLength": 800 },
+        "status": { "type": "string", "maxLength": 40 },
+        "equipment": { "type": "string", "maxLength": 400 },
+        "photoUrl": { "type": "string", "maxLength": 500 },
+        "order": { "type": "number" },
+        "createdAt": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["name", "description", "status"]
+    },
+    "Book": {
+      "title": "Book",
+      "description": "Department library catalog book item",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string", "maxLength": 150 },
+        "author": { "type": "string", "maxLength": 120 },
+        "publisher": { "type": "string", "maxLength": 100 },
+        "edition": { "type": "string", "maxLength": 40 },
+        "isbn": { "type": "string", "maxLength": 40 },
+        "subject": { "type": "string", "maxLength": 60 },
+        "accessionNumber": { "type": "string", "maxLength": 40 },
+        "copies": { "type": "number" },
+        "status": { "type": "string", "maxLength": 30 },
+        "shelfRack": { "type": "string", "maxLength": 40 },
+        "createdAt": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["title", "author", "subject", "status"]
+    },
+    "QuestionPaper": {
+      "title": "QuestionPaper",
+      "description": "Previous year examination question paper",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string", "maxLength": 120 },
+        "subject": { "type": "string", "maxLength": 80 },
+        "course": { "type": "string", "maxLength": 20 },
+        "paperCode": { "type": "string", "maxLength": 40 },
+        "academicYear": { "type": "string", "maxLength": 20 },
+        "semester": { "type": "string", "maxLength": 20 },
+        "yearLevel": { "type": "string", "maxLength": 20 },
+        "examination": { "type": "string", "maxLength": 80 },
+        "fileUrl": { "type": "string" },
+        "fileSize": { "type": "string", "maxLength": 30 },
+        "uploadedByRole": { "type": "string", "maxLength": 20 },
+        "uploaderName": { "type": "string", "maxLength": 100 },
+        "uploaderBatch": { "type": "string", "maxLength": 50 },
+        "uploaderStudentId": { "type": "string", "maxLength": 50 },
+        "createdAt": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["title", "subject", "academicYear", "semester", "examination"]
+    },
+    "Notice": {
+      "title": "Notice",
+      "description": "Departmental circulars, notifications, and events",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string", "maxLength": 160 },
+        "date": { "type": "string", "maxLength": 30 },
+        "category": { "type": "string", "maxLength": 40 },
+        "description": { "type": "string", "maxLength": 1200 },
+        "attachmentUrl": { "type": "string", "maxLength": 500 },
+        "attachmentName": { "type": "string", "maxLength": 100 },
+        "isImportant": { "type": "boolean" },
+        "isArchived": { "type": "boolean" },
+        "createdAt": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["title", "date", "category", "description"]
+    },
+    "Committee": {
+      "title": "Committee",
+      "description": "College and departmental standing committee",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string", "maxLength": 100 },
+        "convener": { "type": "string", "maxLength": 80 },
+        "members": { "type": "string", "maxLength": 400 },
+        "designation": { "type": "string", "maxLength": 80 },
+        "contactNumber": { "type": "string", "maxLength": 30 },
+        "email": { "type": "string", "maxLength": 100 },
+        "responsibilities": { "type": "string", "maxLength": 800 },
+        "office": { "type": "string", "maxLength": 100 },
+        "createdAt": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["name", "convener", "responsibilities"]
+    },
+    "ImportantContact": {
+      "title": "ImportantContact",
+      "description": "Key college and departmental directory contact",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string", "maxLength": 100 },
+        "designation": { "type": "string", "maxLength": 80 },
+        "office": { "type": "string", "maxLength": 100 },
+        "phone": { "type": "string", "maxLength": 30 },
+        "email": { "type": "string", "maxLength": 100 },
+        "order": { "type": "number" },
+        "createdAt": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["name", "designation", "phone", "email"]
+    },
+    "ContactMessage": {
+      "title": "ContactMessage",
+      "description": "Inquiry submitted by students or visitors",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string", "maxLength": 80 },
+        "email": { "type": "string", "maxLength": 100 },
+        "phone": { "type": "string", "maxLength": 25 },
+        "subject": { "type": "string", "maxLength": 150 },
+        "message": { "type": "string", "maxLength": 1500 },
+        "status": { "type": "string", "maxLength": 30 },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["name", "email", "subject", "message"]
+    },
+    "DepartmentSettings": {
+      "title": "DepartmentSettings",
+      "description": "Global settings such as statistics and privacy controls",
+      "type": "object",
+      "properties": {
+        "facultyCount": { "type": "number" },
+        "studentCount": { "type": "number" },
+        "courseCount": { "type": "number" },
+        "bookCount": { "type": "number" },
+        "yearsOfService": { "type": "number" },
+        "studentPublicPrivacy": { "type": "boolean" },
+        "announcementMarquee": { "type": "string", "maxLength": 300 },
+        "pyqUploadCode": { "type": "string", "maxLength": 50 },
+        "updatedAt": { "type": "string" }
+      }
+    },
+    "StudentCredential": {
+      "title": "StudentCredential",
+      "description": "Private credentials database for student portal login, visible only to admin",
+      "type": "object",
+      "properties": {
+        "uniqueId": { "type": "string", "maxLength": 50 },
+        "studentId": { "type": "string", "maxLength": 50 },
+        "rollNumber": { "type": "string", "maxLength": 30 },
+        "studentName": { "type": "string", "maxLength": 100 },
+        "password": { "type": "string", "maxLength": 100 },
+        "course": { "type": "string", "maxLength": 60 },
+        "admissionYear": { "type": "string", "maxLength": 20 },
+        "createdAt": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["uniqueId", "rollNumber", "studentName", "password", "course", "admissionYear"]
+    },
+    "TimeTableSlot": {
+      "title": "TimeTableSlot",
+      "description": "Timetable period slot for courses UG NEP, UG AEDP, PG",
+      "type": "object",
+      "properties": {
+        "course": { "type": "string", "maxLength": 50 },
+        "yearLevel": { "type": "string", "maxLength": 30 },
+        "semester": { "type": "string", "maxLength": 30 },
+        "dayOfWeek": { "type": "string", "maxLength": 20 },
+        "periodNumber": { "type": "number" },
+        "startTime": { "type": "string", "maxLength": 20 },
+        "endTime": { "type": "string", "maxLength": 20 },
+        "paperCode": { "type": "string", "maxLength": 50 },
+        "subjectName": { "type": "string", "maxLength": 120 },
+        "roomNo": { "type": "string", "maxLength": 60 },
+        "facultyName": { "type": "string", "maxLength": 100 },
+        "type": { "type": "string", "maxLength": 40 },
+        "notes": { "type": "string", "maxLength": 300 },
+        "createdAt": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["course", "yearLevel", "semester", "dayOfWeek", "startTime", "endTime", "paperCode", "subjectName", "facultyName"]
+    },
+    "Syllabus": {
+      "title": "Syllabus",
+      "description": "Course curriculum and syllabus for department offerings",
+      "type": "object",
+      "properties": {
+        "course": { "type": "string", "maxLength": 50 },
+        "yearLevel": { "type": "string", "maxLength": 30 },
+        "semester": { "type": "string", "maxLength": 30 },
+        "title": { "type": "string", "maxLength": 150 },
+        "paperCode": { "type": "string", "maxLength": 50 },
+        "academicYear": { "type": "string", "maxLength": 30 },
+        "credits": { "type": "string", "maxLength": 30 },
+        "description": { "type": "string", "maxLength": 1500 },
+        "recommendedBooks": { "type": "string", "maxLength": 600 },
+        "fileUrl": { "type": "string", "maxLength": 500 },
+        "fileSize": { "type": "string", "maxLength": 30 },
+        "createdAt": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["course", "yearLevel", "semester", "title", "description"]
+    },
+    "GalleryPhoto": {
+      "title": "GalleryPhoto",
+      "description": "Department event photo protected from unauthorized copying/downloads",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string", "maxLength": 150 },
+        "eventId": { "type": "string", "maxLength": 100 },
+        "eventName": { "type": "string", "maxLength": 150 },
+        "eventDate": { "type": "string", "maxLength": 30 },
+        "academicYear": { "type": "string", "maxLength": 30 },
+        "caption": { "type": "string", "maxLength": 1000 },
+        "photoUrl": { "type": "string" },
+        "fileSizeBytes": { "type": "number" },
+        "fileSizeFormatted": { "type": "string", "maxLength": 30 },
+        "uploadedBy": { "type": "string", "maxLength": 100 },
+        "createdAt": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["title", "eventName", "photoUrl"]
+    }
+  },
+  "firestore": {
+    "/gallery/{photoId}": {
+      "schema": { "$ref": "#/entities/GalleryPhoto" },
+      "description": "Department event photos collection"
+    },
+    "/timetables/{timetableId}": {
+      "schema": { "$ref": "#/entities/TimeTableSlot" },
+      "description": "Timetable slots modifiable by admin and readable by students"
+    },
+    "/syllabuses/{syllabusId}": {
+      "schema": { "$ref": "#/entities/Syllabus" },
+      "description": "Course syllabus offerings"
+    },
+    "/student_credentials/{credentialId}": {
+      "schema": { "$ref": "#/entities/StudentCredential" },
+      "description": "Student login IDs and passwords vault, strictly managed by administrator"
+    },
+    "/faculty/{facultyId}": {
+      "schema": { "$ref": "#/entities/Faculty" },
+      "description": "Faculty profile information"
+    },
+    "/students/{studentId}": {
+      "schema": { "$ref": "#/entities/Student" },
+      "description": "Department student database"
+    },
+    "/facilities/{facilityId}": {
+      "schema": { "$ref": "#/entities/Facility" },
+      "description": "Department facilities"
+    },
+    "/books/{bookId}": {
+      "schema": { "$ref": "#/entities/Book" },
+      "description": "Library book catalog"
+    },
+    "/question_papers/{paperId}": {
+      "schema": { "$ref": "#/entities/QuestionPaper" },
+      "description": "Previous year examination papers"
+    },
+    "/notices/{noticeId}": {
+      "schema": { "$ref": "#/entities/Notice" },
+      "description": "Notices and circulars"
+    },
+    "/committees/{committeeId}": {
+      "schema": { "$ref": "#/entities/Committee" },
+      "description": "College and department committees"
+    },
+    "/important_contacts/{contactId}": {
+      "schema": { "$ref": "#/entities/ImportantContact" },
+      "description": "Directory of important administrative contacts"
+    },
+    "/contact_messages/{messageId}": {
+      "schema": { "$ref": "#/entities/ContactMessage" },
+      "description": "Visitor inquiries sent through contact form"
+    },
+    "/department_settings/{settingId}": {
+      "schema": { "$ref": "#/entities/DepartmentSettings" },
+      "description": "Department settings and configurations"
+    },
+    "/database_backups/{backupId}": {
+      "schema": { "$ref": "#/entities/DepartmentSettings" },
+      "description": "Snapshots and full database backups"
+    }
+  }
+}

@@ -1,0 +1,119 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 480" width="100%" height="100%">
+  <defs>
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#cfd8ea"/>
+      <stop offset="100%" stop-color="#b8c6df"/>
+    </linearGradient>
+    <radialGradient id="faceGrad" cx="50%" cy="45%" r="55%">
+      <stop offset="0%" stop-color="#b68363"/>
+      <stop offset="70%" stop-color="#9a6547"/>
+      <stop offset="100%" stop-color="#805138"/>
+    </radialGradient>
+    <radialGradient id="foreheadHighlight" cx="50%" cy="30%" r="40%">
+      <stop offset="0%" stop-color="#c49372" stop-opacity="0.8"/>
+      <stop offset="100%" stop-color="#b68363" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="shirtGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#22252a"/>
+      <stop offset="50%" stop-color="#16181b"/>
+      <stop offset="100%" stop-color="#0e1012"/>
+    </linearGradient>
+    <linearGradient id="hairGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#2a2220"/>
+      <stop offset="100%" stop-color="#110d0c"/>
+    </linearGradient>
+    <filter id="softShadow" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="4" stdDeviation="4" flood-opacity="0.25"/>
+    </filter>
+  </defs>
+
+  <!-- Background Canvas -->
+  <rect width="400" height="480" fill="url(#bgGrad)"/>
+
+  <!-- Subtle ambient halo behind head -->
+  <circle cx="200" cy="200" r="140" fill="#ffffff" opacity="0.25"/>
+
+  <!-- Shoulders & Torso / Black T-Shirt -->
+  <path d="M 50 480 L 50 360 C 50 325 85 295 125 285 L 155 280 C 165 290 180 298 200 298 C 220 298 235 290 245 280 L 275 285 C 315 295 350 325 350 360 L 350 480 Z" fill="url(#shirtGrad)"/>
+
+  <!-- T-shirt crew neck collar -->
+  <path d="M 150 280 C 165 295 180 302 200 302 C 220 302 235 295 250 280 C 242 274 230 270 200 270 C 170 270 158 274 150 280 Z" fill="#2d3138" stroke="#16181b" stroke-width="2"/>
+  <path d="M 152 284 C 168 298 182 305 200 305 C 218 305 232 298 248 284" fill="none" stroke="#3d424b" stroke-width="3"/>
+
+  <!-- "Being human" stylized white inscription on chest -->
+  <g transform="translate(130, 395) scale(0.95)" opacity="0.92">
+    <!-- Stylized handwritten Being human representation -->
+    <path d="M 10 5 C 10 -15 22 -15 22 5 C 22 15 10 15 10 5 M 22 0 C 26 -8 34 -8 34 2 C 34 10 24 10 24 2 M 38 -5 L 38 12 M 40 -12 L 40 -9 M 46 2 C 46 -6 56 -6 56 6 C 56 12 46 12 46 2 M 64 -6 L 64 8 C 64 16 54 18 50 14" fill="none" stroke="#f1f3f5" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+    <text x="0" y="8" font-family="'Caveat', 'Segoe Print', 'Brush Script MT', cursive, sans-serif" font-size="28" font-weight="bold" fill="#ffffff" letter-spacing="1">Being human</text>
+  </g>
+
+  <!-- Neck -->
+  <path d="M 160 210 L 160 280 C 172 288 185 292 200 292 C 215 292 228 288 240 280 L 240 210 Z" fill="#88563c"/>
+  <!-- Neck shadow under chin -->
+  <path d="M 160 210 C 180 235 220 235 240 210 C 230 250 170 250 160 210 Z" fill="#6e422c" opacity="0.6"/>
+
+  <!-- Ears -->
+  <!-- Left Ear -->
+  <path d="M 125 150 C 110 150 110 195 128 200 C 130 190 130 165 125 150 Z" fill="#9a6547"/>
+  <path d="M 124 160 C 116 165 116 185 125 190" fill="none" stroke="#754830" stroke-width="2"/>
+  <!-- Right Ear -->
+  <path d="M 275 150 C 290 150 290 195 272 200 C 270 190 270 165 275 150 Z" fill="#9a6547"/>
+  <path d="M 276 160 C 284 165 284 185 275 190" fill="none" stroke="#754830" stroke-width="2"/>
+
+  <!-- Head / Face (Round, broad jawline as in photo) -->
+  <path d="M 130 135 C 130 80 160 65 200 65 C 240 65 270 80 270 135 C 270 185 265 220 235 235 C 215 243 185 243 165 235 C 135 220 130 185 130 135 Z" fill="url(#faceGrad)" filter="url(#softShadow)"/>
+
+  <!-- Forehead highlight -->
+  <ellipse cx="200" cy="110" rx="45" ry="25" fill="url(#foreheadHighlight)"/>
+
+  <!-- Eyebrows (Neat, natural dark brows) -->
+  <!-- Left eyebrow -->
+  <path d="M 152 142 C 162 136 178 138 185 144" fill="none" stroke="#1d1614" stroke-width="4.5" stroke-linecap="round"/>
+  <!-- Right eyebrow -->
+  <path d="M 215 144 C 222 138 238 136 248 142" fill="none" stroke="#1d1614" stroke-width="4.5" stroke-linecap="round"/>
+
+  <!-- Eyes -->
+  <!-- Left eye -->
+  <ellipse cx="170" cy="154" rx="13" ry="8" fill="#f4ede8"/>
+  <circle cx="171" cy="154" r="6" fill="#32221b"/>
+  <circle cx="172" cy="154" r="3" fill="#0d0806"/>
+  <circle cx="169" cy="152" r="1.5" fill="#ffffff"/>
+  <path d="M 156 153 C 163 147 177 147 184 153" fill="none" stroke="#2a1b15" stroke-width="2" stroke-linecap="round"/>
+  <path d="M 158 156 C 164 160 176 160 182 156" fill="none" stroke="#7c4e36" stroke-width="1.2"/>
+
+  <!-- Right eye -->
+  <ellipse cx="230" cy="154" rx="13" ry="8" fill="#f4ede8"/>
+  <circle cx="229" cy="154" r="6" fill="#32221b"/>
+  <circle cx="228" cy="154" r="3" fill="#0d0806"/>
+  <circle cx="231" cy="152" r="1.5" fill="#ffffff"/>
+  <path d="M 216 153 C 223 147 237 147 244 153" fill="none" stroke="#2a1b15" stroke-width="2" stroke-linecap="round"/>
+  <path d="M 218 156 C 224 160 236 160 242 156" fill="none" stroke="#7c4e36" stroke-width="1.2"/>
+
+  <!-- Nose (Broad, well-defined bridge) -->
+  <path d="M 197 146 L 195 178 C 193 184 186 186 186 188 C 187 192 195 194 200 194 C 205 194 213 192 214 188 C 214 186 207 184 205 178 L 203 146" fill="none" stroke="#7f4e35" stroke-width="1.5"/>
+  <ellipse cx="192" cy="188" rx="3.5" ry="2" fill="#5c3522"/>
+  <ellipse cx="208" cy="188" rx="3.5" ry="2" fill="#5c3522"/>
+  <path d="M 188 186 C 194 182 206 182 212 186" fill="none" stroke="#8d5b40" stroke-width="2"/>
+
+  <!-- Mouth & Lips (Subtle, professional composed smile) -->
+  <path d="M 184 210 C 193 208 207 208 216 210" fill="none" stroke="#7a4430" stroke-width="2.5" stroke-linecap="round"/>
+  <!-- Upper Lip -->
+  <path d="M 185 209 C 193 205 200 207 200 207 C 200 207 207 205 215 209 C 207 210 193 210 185 209 Z" fill="#884f39"/>
+  <!-- Lower Lip -->
+  <path d="M 187 211 C 193 216 207 216 213 211 C 208 217 192 217 187 211 Z" fill="#965a44"/>
+  <!-- Chin cleft / curve -->
+  <path d="M 194 226 C 198 228 202 228 206 226" fill="none" stroke="#7a462e" stroke-width="2" stroke-linecap="round"/>
+
+  <!-- Hair (Short styled dark spiky hair with side taper) -->
+  <path d="M 132 125 C 130 95 140 70 165 52 C 180 42 200 40 220 46 C 245 54 268 75 270 115 C 272 130 268 135 266 138 C 263 125 264 105 258 92 C 250 78 238 72 222 72 C 206 72 195 68 182 72 C 168 76 156 86 148 100 C 142 110 138 126 132 125 Z" fill="url(#hairGrad)"/>
+  <!-- Hair spikes on top center -->
+  <path d="M 180 55 Q 192 35 200 38 Q 208 42 215 54 Q 225 42 232 50 Q 240 60 245 70" fill="url(#hairGrad)" stroke="#1a1412" stroke-width="2"/>
+  <path d="M 165 65 Q 175 48 185 52 Q 195 45 205 48" fill="url(#hairGrad)"/>
+  <!-- Left temple hair -->
+  <path d="M 134 110 C 130 120 132 135 130 148 C 134 148 138 135 140 125 Z" fill="#1c1614"/>
+  <!-- Right temple hair -->
+  <path d="M 268 110 C 272 120 270 135 272 148 C 268 148 264 135 262 125 Z" fill="#1c1614"/>
+
+  <!-- Soft highlight rim around portrait -->
+  <rect x="2" y="2" width="396" height="476" rx="8" fill="none" stroke="#e2e8f0" stroke-width="3" opacity="0.6"/>
+</svg>

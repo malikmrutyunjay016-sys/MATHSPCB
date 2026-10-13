@@ -1,0 +1,8 @@
+{
+  "name": "Department of Mathematics - Panchayat College, Bargarh",
+  "description": "Official digital portal of the Department of Mathematics, Panchayat College, Bargarh, Odisha. Academic programs, faculty profiles, student database, previous question papers, library catalog, and notices.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
