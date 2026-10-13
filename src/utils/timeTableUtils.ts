@@ -1355,10 +1355,6 @@ export function generatePrintableFacultyScheduleHtml(
     .fac-name { font-size: 13px; font-weight: 900; color: #0b1a2f; }
     .fac-desig { font-size: 10px; font-weight: 700; color: #b45309; margin-left: 6px; }
     .meta-pills { font-size: 9px; font-weight: 700; color: #334155; display: flex; flex-wrap: wrap; gap: 10px; }
-    .counting-rule-note {
-      background: #eef2ff; border: 1px solid #c7d2fe; padding: 4px 8px; border-radius: 4px;
-      font-size: 8px; color: #3730a3; font-weight: 600; margin-top: 4px;
-    }
     table.routine-table { width: 100%; border-collapse: collapse; margin-top: 8px; table-layout: fixed; font-size: 9px; }
     .signatures {
       display: flex; justify-content: space-between; margin-top: 16px; padding-top: 4px;
@@ -1414,13 +1410,6 @@ export function generatePrintableFacultyScheduleHtml(
             <span>SESSION: <strong>${academicSession}</strong></span>
             <span>DAYS: <strong>MON – SAT</strong></span>
           </div>
-        </div>
-        <div class="counting-rule-note">
-          ℹ️ Workload Counting: ${
-            isGuest
-              ? 'Guest Faculty — Practical lab sessions counted as existing (1 class per practical session).'
-              : `${facultyDesignation} — Each period of a practical class is counted as 1 class (${practicalCount} classes across practical periods).`
-          }
         </div>
       </div>
 
