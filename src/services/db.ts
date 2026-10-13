@@ -1082,10 +1082,16 @@ export function subscribeToSettings(
 export async function updateDepartmentSettings(settings: Partial<DepartmentSettings>) {
   const path = 'department_settings/general';
   try {
-    await updateDoc(doc(db, 'department_settings', 'general'), sanitizeForFirestore({
+    const updated = {
       ...settings,
       updatedAt: new Date().toISOString(),
-    }));
+    };
+    try {
+      const existing = JSON.parse(localStorage.getItem('dept_settings') || '{}');
+      localStorage.setItem('dept_settings', JSON.stringify({ ...existing, ...updated }));
+    } catch {}
+
+    await updateDoc(doc(db, 'department_settings', 'general'), sanitizeForFirestore(updated));
   } catch (err) {
     handleFirestoreError(err, OperationType.UPDATE, path);
   }

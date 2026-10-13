@@ -6,6 +6,7 @@ interface CollegeLogoProps {
   showBorder?: boolean;
   onClick?: () => void;
   title?: string;
+  logoUrl?: string;
 }
 
 /**
@@ -25,17 +26,20 @@ export const CollegeLogo: React.FC<CollegeLogoProps> = ({
   showBorder = false,
   onClick,
   title,
+  logoUrl,
 }) => {
-  let customLogoUrl = '';
-  try {
-    const saved = localStorage.getItem('dept_settings');
-    if (saved) {
-      const parsed = JSON.parse(saved);
-      if (parsed.logoUrl) {
-        customLogoUrl = parsed.logoUrl;
+  let customLogoUrl = logoUrl || '';
+  if (!customLogoUrl) {
+    try {
+      const saved = localStorage.getItem('dept_settings');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (parsed.logoUrl) {
+          customLogoUrl = parsed.logoUrl;
+        }
       }
-    }
-  } catch {}
+    } catch {}
+  }
 
   return (
     <div
