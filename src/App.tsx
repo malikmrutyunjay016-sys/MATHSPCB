@@ -1099,7 +1099,6 @@ function AppContent() {
             downloads={downloads}
             onSaveDownload={handleSaveDownload}
             onDeleteDownload={(id, title) => handleDeleteDownload(id, title)}
-            syllabuses={syllabuses}
             onViewPDF={(title, url, category, fileName) =>
               setPdfModalData({
                 isOpen: true,

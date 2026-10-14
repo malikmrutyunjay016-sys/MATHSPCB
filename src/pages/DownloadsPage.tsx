@@ -55,7 +55,7 @@ export const DownloadsPage: React.FC<DownloadsPageProps> = ({
 
   const rawDownloadsList = propDownloads && propDownloads.length > 0 ? propDownloads : localDownloads;
 
-  // Strictly filter out any previous year question papers from downloads repository
+  // Strictly filter out any previous year question papers AND curriculum/syllabi from downloads repository
   const activeDownloadsList = useMemo(() => {
     return rawDownloadsList.filter((item) => {
       const isPYQ =
@@ -66,7 +66,16 @@ export const DownloadsPage: React.FC<DownloadsPageProps> = ({
         item.title?.toLowerCase().includes('question paper') ||
         item.title?.toLowerCase().includes('previous year question') ||
         item.description?.toLowerCase().includes('examination paper');
-      return !isPYQ;
+
+      const isSyllabus =
+        item.id.startsWith('syl-') ||
+        item.category?.toLowerCase() === 'syllabus' ||
+        item.category?.toLowerCase() === 'syllabi' ||
+        item.category?.toLowerCase() === 'curriculum' ||
+        item.title?.toLowerCase().includes('syllabus') ||
+        item.title?.toLowerCase().includes('curriculum');
+
+      return !isPYQ && !isSyllabus;
     });
   }, [rawDownloadsList]);
 
@@ -84,10 +93,10 @@ export const DownloadsPage: React.FC<DownloadsPageProps> = ({
   const [isDeleting, setIsDeleting] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
 
-  // Form state
+  // Form state (default to Routine/Form/Regulation/Calendar, no Syllabus)
   const [formTitle, setFormTitle] = useState('');
   const [formCode, setFormCode] = useState('');
-  const [formCategory, setFormCategory] = useState<DownloadCategory>('Syllabus');
+  const [formCategory, setFormCategory] = useState<DownloadCategory>('Routine');
   const [formCourseBadge, setFormCourseBadge] = useState<DownloadCourseBadge>('UG NEP');
   const [formSession, setFormSession] = useState('2026–27');
   const [formFileSize, setFormFileSize] = useState('1.5 MB');
@@ -96,37 +105,17 @@ export const DownloadsPage: React.FC<DownloadsPageProps> = ({
   const [formIsImportant, setFormIsImportant] = useState(false);
   const [formUploadFileName, setFormUploadFileName] = useState('');
 
-  // Combined downloadable list: strictly official downloads and syllabi (NO previous year questions)
+  // Official downloads list: strictly official routines, proformas, calendars, regulations
+  // Note: Syllabuses are kept exclusively in Menu -> Syllabus
   const allItems = useMemo(() => {
-    const list = [...activeDownloadsList];
-
-    // Add dynamic syllabuses from database if not already present
-    syllabuses.forEach((s) => {
-      const sylTitle = s.title || s.paperCode || `${s.course} Syllabus`;
-      if (!list.some((item) => item.title.toLowerCase() === sylTitle.toLowerCase() || item.id === `syl-${s.id}`)) {
-        list.push({
-          id: `syl-${s.id}`,
-          title: sylTitle,
-          code: s.paperCode || `SYL-${(s.course || 'UG').replace(/\s+/g, '')}`,
-          category: 'Syllabus',
-          courseBadge: s.course?.includes('PG') ? 'PG' : s.course?.includes('NEP') ? 'UG NEP' : 'UG CBCS',
-          session: s.academicYear || s.session || '2026–27',
-          fileSize: s.fileSize || '1.5 MB',
-          description: s.description || `${s.course} semester curriculum document approved by Sambalpur University.`,
-          fileUrl: s.fileUrl || '/syllabus/default.pdf',
-        });
-      }
-    });
-
-    return list;
-  }, [activeDownloadsList, syllabuses]);
+    return [...activeDownloadsList];
+  }, [activeDownloadsList]);
 
   // Filtered downloads
   const filteredItems = useMemo(() => {
     return allItems.filter((item) => {
       const matchCat =
         selectedCategory === 'All' ||
-        (selectedCategory === 'Syllabi' && item.category === 'Syllabus') ||
         (selectedCategory === 'Routines' && (item.category === 'Routine' || item.category === 'Calendar')) ||
         (selectedCategory === 'Forms' && item.category === 'Form') ||
         (selectedCategory === 'Regulations' && (item.category === 'Regulation' || item.category === 'Calendar'));
@@ -343,21 +332,8 @@ export const DownloadsPage: React.FC<DownloadsPageProps> = ({
                 Downloads & Academic Resources
               </h1>
               <p className="text-xs sm:text-sm text-slate-600 max-w-2xl mt-1.5 leading-relaxed">
-                Official Sambalpur University syllabi, departmental class routines, academic calendar, and downloadable student proformas.
+                Official departmental class routines, academic calendar, academic regulations, and downloadable student proformas.
               </p>
-            </div>
-
-            <div className="flex items-center gap-2">
-              {onNavigateToTab && (
-                <button
-                  type="button"
-                  onClick={() => onNavigateToTab('syllabus')}
-                  className="px-4 py-2 bg-amber-500 hover:bg-amber-400 text-slate-950 rounded-xl text-xs font-bold flex items-center gap-1.5 transition shadow-xs cursor-pointer"
-                >
-                  <BookOpen className="w-4 h-4" />
-                  <span>View All Syllabi</span>
-                </button>
-              )}
             </div>
           </div>
         </div>
@@ -396,7 +372,7 @@ export const DownloadsPage: React.FC<DownloadsPageProps> = ({
                 type="text"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                placeholder="Search syllabi, forms, routines, calendars..."
+                placeholder="Search forms, routines, calendars, regulations..."
                 className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs sm:text-sm text-slate-800 placeholder-slate-400 focus:outline-hidden focus:border-amber-500 focus:ring-1 focus:ring-amber-500"
               />
               {searchTerm && (
@@ -432,11 +408,6 @@ export const DownloadsPage: React.FC<DownloadsPageProps> = ({
           <div className="flex items-center gap-2 overflow-x-auto pb-1 border-t border-slate-100 pt-3">
             {[
               { id: 'All', label: 'All Downloads', count: allItems.length },
-              {
-                id: 'Syllabi',
-                label: 'Curriculum & Syllabi',
-                count: allItems.filter((i) => i.category === 'Syllabus').length,
-              },
               {
                 id: 'Routines',
                 label: 'Timetables & Calendars',
@@ -717,7 +688,6 @@ export const DownloadsPage: React.FC<DownloadsPageProps> = ({
                     onChange={(e) => setFormCategory(e.target.value as DownloadCategory)}
                     className="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 focus:outline-hidden focus:border-amber-500"
                   >
-                    <option value="Syllabus">Curriculum & Syllabus</option>
                     <option value="Routine">Time Table / Routine</option>
                     <option value="Form">Department Proforma / Form</option>
                     <option value="Calendar">Academic Calendar</option>

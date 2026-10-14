@@ -3415,30 +3415,6 @@ export const initialGallery: GalleryPhoto[] = [
 
 export const initialDownloads: DownloadItem[] = [
   {
-    id: 'dl-1',
-    title: 'Sambalpur University B.Sc. (NEP) Mathematics Honors Syllabus (Sem I to VIII)',
-    code: 'NEP-MATH-UG-2026',
-    category: 'Syllabus',
-    courseBadge: 'UG NEP',
-    session: '2026–27',
-    fileSize: '2.4 MB',
-    description: 'Complete 4-Year Undergraduate NEP curriculum including Major, Minor, AEC, SEC, and Research Dissertation papers.',
-    fileUrl: '/syllabus/UG_NEP_Mathematics_Complete_Syllabus.pdf',
-    isImportant: true,
-  },
-  {
-    id: 'dl-2',
-    title: 'M.Sc. Mathematics 2-Year Post Graduate Complete CBCS Syllabus',
-    code: 'PG-MATH-CBCS-2026',
-    category: 'Syllabus',
-    courseBadge: 'PG',
-    session: '2026–27',
-    fileSize: '1.8 MB',
-    description: 'Postgraduate 4-Semester curriculum comprising Advanced Topology, Complex Analysis, Differential Geometry, and Combinatorics.',
-    fileUrl: '/syllabus/MSc_Mathematics_Paper_101.pdf',
-    isImportant: true,
-  },
-  {
     id: 'dl-3',
     title: 'Department All-Days Master Time Table & Routine Sheet',
     code: 'ROUTINE-2026-ALL',
@@ -3494,17 +3470,6 @@ export const initialDownloads: DownloadItem[] = [
     fileSize: '160 KB',
     description: 'Application for borrowing books and reference monographs from the departmental library collection.',
     fileUrl: '/documents/Library_Card_Application.pdf',
-  },
-  {
-    id: 'dl-8',
-    title: 'Sambalpur University CBCS B.Sc. Mathematics Honors (Old Regulations)',
-    code: 'CBCS-MATH-LEGACY',
-    category: 'Syllabus',
-    courseBadge: 'UG CBCS',
-    session: '2024–25',
-    fileSize: '1.9 MB',
-    description: 'Reference curriculum for 3rd Year graduating students under the CBCS semester system.',
-    fileUrl: '/syllabus/UG_CBCS_Mathematics_Syllabus.pdf',
   },
   {
     id: 'dl-9',
