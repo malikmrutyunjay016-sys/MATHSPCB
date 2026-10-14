@@ -20,7 +20,7 @@ export const Footer: React.FC<FooterProps> = ({ onNavigate }) => {
   };
 
   return (
-    <footer className="bg-[#071324] text-slate-300 border-t border-slate-800 print:hidden">
+    <footer id="page-bottom" className="bg-[#071324] text-slate-300 border-t border-slate-800 print:hidden">
       {/* Upper Footer Columns */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-14">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-12 gap-8 lg:gap-12">

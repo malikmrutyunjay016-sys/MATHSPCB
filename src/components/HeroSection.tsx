@@ -445,8 +445,22 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
       {/* Subtle Down Chevron Scroll Indicator (Mirroring Photo) */}
       <div className="pb-3 flex justify-center items-center text-slate-400 hover:text-white transition">
         <a
-          href="#gateway-section"
-          className="flex flex-col items-center gap-1 text-[10px] uppercase tracking-widest opacity-80 hover:opacity-100"
+          href="#page-bottom"
+          onClick={(e) => {
+            e.preventDefault();
+            const footerEl = document.getElementById('page-bottom');
+            if (footerEl) {
+              footerEl.scrollIntoView({ behavior: 'smooth', block: 'end' });
+            } else {
+              window.scrollTo({
+                top: document.documentElement.scrollHeight || document.body.scrollHeight,
+                behavior: 'smooth',
+              });
+            }
+          }}
+          className="flex flex-col items-center gap-1 text-[10px] uppercase tracking-widest opacity-80 hover:opacity-100 cursor-pointer"
+          title="Go to end of page"
+          aria-label="Go to end of page"
         >
           <ChevronDown className="w-5 h-5 text-amber-400/80 animate-bounce" />
         </a>
