@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   BookOpen,
   Search,
@@ -67,6 +67,23 @@ export const LibraryPage: React.FC<LibraryPageProps> = ({
     return matchSubj && matchStatus && matchSearch;
   });
 
+  const totalBooksCount = books.length;
+  const totalCopiesCount = useMemo(
+    () => books.reduce((acc, b) => acc + (Number(b.copies) || 1), 0),
+    [books]
+  );
+  const availableCopiesCount = useMemo(
+    () =>
+      books
+        .filter((b) => b.status === 'Available')
+        .reduce((acc, b) => acc + (Number(b.copies) || 1), 0),
+    [books]
+  );
+  const distinctSubjectsCount = useMemo(
+    () => new Set(books.map((b) => b.subject).filter(Boolean)).size,
+    [books]
+  );
+
   return (
     <div className="bg-slate-50 min-h-screen py-10">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-6">
@@ -80,8 +97,30 @@ export const LibraryPage: React.FC<LibraryPageProps> = ({
             <h1 className="font-serif-academic text-2xl sm:text-3xl md:text-4xl font-extrabold text-[#0c2340]">
               Department Library Catalogue
             </h1>
-            <p className="text-xs sm:text-sm text-slate-600 max-w-2xl leading-relaxed">
-              Explore over 1,250 textbook volumes, standard reference treatises, and research literature in pure and applied mathematics. Search by subject, accession number, or ISBN.
+            <p className="text-xs sm:text-sm text-slate-700 max-w-3xl leading-relaxed bg-gradient-to-r from-emerald-50/90 via-slate-50 to-amber-50/40 border border-emerald-200/90 rounded-xl p-3.5 sm:p-4 shadow-2xs ring-1 ring-emerald-500/15">
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-900 border border-emerald-300 text-[11px] font-bold uppercase tracking-wider mr-2 shrink-0 align-middle shadow-2xs">
+                <BookOpen className="w-3 h-3 text-emerald-700" />
+                <span>{totalCopiesCount} Volumes</span>
+              </span>
+              <span>
+                Explore{' '}
+                <strong className="font-bold text-[#0c2340]">
+                  {totalCopiesCount.toLocaleString()} textbook {totalCopiesCount === 1 ? 'volume' : 'volumes'}
+                </strong>{' '}
+                comprising{' '}
+                <strong className="font-bold text-emerald-800">
+                  {totalBooksCount} distinct {totalBooksCount === 1 ? 'title' : 'titles'}
+                </strong>{' '}
+                across{' '}
+                <strong className="font-semibold text-slate-800">
+                  {distinctSubjectsCount} subject {distinctSubjectsCount === 1 ? 'area' : 'areas'}
+                </strong>
+                , standard reference treatises, and research literature in pure and applied mathematics. Currently{' '}
+                <strong className="font-semibold text-emerald-700">
+                  {availableCopiesCount} {availableCopiesCount === 1 ? 'copy is' : 'copies are'} available
+                </strong>{' '}
+                for immediate issue. Search by subject, accession number, or ISBN.
+              </span>
             </p>
           </div>
 

@@ -190,10 +190,20 @@ export const HomePage: React.FC<HomePageProps> = ({
       </section>
 
       {/* 3. Department Statistics Banner */}
-      <DepartmentStats settings={settings} onNavigate={onNavigate} />
+      <DepartmentStats
+        settings={settings}
+        faculty={faculty}
+        students={students}
+        books={books}
+        onNavigate={onNavigate}
+      />
 
       {/* 4. Quick Academic Access Cards */}
-      <QuickAccessCards onNavigate={onNavigate} />
+      <QuickAccessCards
+        onNavigate={onNavigate}
+        facultyCount={faculty.length}
+        studentCount={students.length}
+      />
 
       {/* 5. Calendar, Notice Board & Announcements Section */}
       <CalendarNoticesSection

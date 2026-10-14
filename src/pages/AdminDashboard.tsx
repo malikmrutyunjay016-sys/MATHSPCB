@@ -44,6 +44,7 @@ import { MarkFoilGenerator } from '../components/MarkFoilGenerator';
 import { DownloadsPage } from './DownloadsPage';
 import {
   Faculty,
+  getFacultyCategory,
   Student,
   StudentCredential,
   Facility,
@@ -290,7 +291,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 
   const [statsForm, setStatsForm] = useState({
     facultyCount: (faculty && faculty.length) || settings.facultyCount || 6,
-    studentCount: (students && students.length) || settings.studentCount || 192,
+    studentCount: (students && students.length) || settings.studentCount || 9,
     courseCount: settings.courseCount || 3,
     bookCount: liveBookCount || settings.bookCount || 116,
     yearsOfService: settings.yearsOfService || 52,

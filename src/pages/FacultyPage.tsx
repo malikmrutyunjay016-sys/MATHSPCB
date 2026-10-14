@@ -18,7 +18,7 @@ import {
   Download,
   Calendar,
 } from 'lucide-react';
-import { Faculty, TimeTableSlot, TimeTablePeriod } from '../types';
+import { Faculty, TimeTableSlot, TimeTablePeriod, getFacultyCategory, FacultyCategory } from '../types';
 import { useAuth } from '../context/AuthContext';
 import { generatePrintableFacultyScheduleHtml, triggerDirectPrint } from '../utils/timeTableUtils';
 import { initialPeriods } from '../data/initialData';
@@ -44,6 +44,7 @@ export const FacultyPage: React.FC<FacultyPageProps> = ({
 }) => {
   const { isAdmin } = useAuth();
   const [searchTerm, setSearchTerm] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState<'all' | 'regular' | 'guest'>('all');
   const [selectedFaculty, setSelectedFaculty] = useState<Faculty | null>(null);
 
   // Strictly sort faculty by their order number
@@ -56,15 +57,32 @@ export const FacultyPage: React.FC<FacultyPageProps> = ({
     });
   }, [faculty]);
 
+  const categoryCounts = useMemo(() => {
+    let regular = 0;
+    let guest = 0;
+    for (const f of faculty) {
+      const cat = getFacultyCategory(f);
+      if (cat === 'guest' || cat === 'visiting' || cat === 'regular_guest') guest++;
+      else regular++;
+    }
+    return { all: faculty.length, regular, guest };
+  }, [faculty]);
+
   const filteredFaculty = useMemo(() => {
-    return sortedFaculty.filter(
-      (f) =>
+    return sortedFaculty.filter((f) => {
+      const cat = getFacultyCategory(f);
+      if (selectedCategory !== 'all') {
+        if (selectedCategory === 'regular' && cat !== 'regular') return false;
+        if (selectedCategory === 'guest' && cat === 'regular') return false;
+      }
+      return (
         f.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
         f.designation.toLowerCase().includes(searchTerm.toLowerCase()) ||
         f.specialization.toLowerCase().includes(searchTerm.toLowerCase()) ||
         f.qualification.toLowerCase().includes(searchTerm.toLowerCase())
-    );
-  }, [sortedFaculty, searchTerm]);
+      );
+    });
+  }, [sortedFaculty, searchTerm, selectedCategory]);
 
   const handleMoveOrder = (member: Faculty, direction: 'up' | 'down') => {
     const currentIndex = sortedFaculty.findIndex((f) => f.id === member.id);
@@ -137,21 +155,77 @@ export const FacultyPage: React.FC<FacultyPageProps> = ({
           </div>
         </div>
 
-        {/* Filter and Search Bar */}
-        <div className="bg-white p-4 rounded-xl border border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-4">
-          <div className="relative w-full sm:w-96">
-            <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
-            <input
-              type="text"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              placeholder="Search by name, specialization, qualification..."
-              className="w-full pl-9 pr-4 py-2 rounded-lg border border-slate-200 text-xs focus:outline-hidden focus:border-blue-600"
-            />
+        {/* Filter and Search Bar with Category Tabs */}
+        <div className="bg-white p-4 rounded-xl border border-slate-200 flex flex-col gap-3">
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+            <div className="relative w-full sm:w-96">
+              <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+              <input
+                type="text"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                placeholder="Search by name, specialization, qualification..."
+                className="w-full pl-9 pr-4 py-2 rounded-lg border border-slate-200 text-xs focus:outline-hidden focus:border-blue-600"
+              />
+            </div>
+
+            <div className="text-xs text-slate-500">
+              Showing <strong className="text-slate-900">{filteredFaculty.length}</strong> of {faculty.length} faculty profile{filteredFaculty.length === 1 ? '' : 's'}
+            </div>
           </div>
 
-          <div className="text-xs text-slate-500">
-            Showing <strong className="text-slate-900">{filteredFaculty.length}</strong> faculty profile{filteredFaculty.length === 1 ? '' : 's'} in order
+          {/* Category Filter Pills */}
+          <div className="flex items-center gap-2 overflow-x-auto pb-1 pt-1 border-t border-slate-100 text-xs">
+            <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider shrink-0 mr-1">
+              Filter By:
+            </span>
+            <button
+              onClick={() => setSelectedCategory('all')}
+              className={`px-3 py-1.5 rounded-lg font-bold text-xs transition cursor-pointer shrink-0 flex items-center gap-1.5 ${
+                selectedCategory === 'all'
+                  ? 'bg-[#0c2340] text-amber-300 shadow-2xs'
+                  : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+              }`}
+            >
+              <span>All Faculty</span>
+              <span className={`px-1.5 py-0.2 rounded-full text-[10px] ${
+                selectedCategory === 'all' ? 'bg-amber-400/20 text-amber-300' : 'bg-slate-200 text-slate-700'
+              }`}>
+                {categoryCounts.all}
+              </span>
+            </button>
+
+            <button
+              onClick={() => setSelectedCategory('regular')}
+              className={`px-3 py-1.5 rounded-lg font-bold text-xs transition cursor-pointer shrink-0 flex items-center gap-1.5 ${
+                selectedCategory === 'regular'
+                  ? 'bg-blue-700 text-white shadow-2xs'
+                  : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+              }`}
+            >
+              <span>Regular Faculty</span>
+              <span className={`px-1.5 py-0.2 rounded-full text-[10px] ${
+                selectedCategory === 'regular' ? 'bg-white/20 text-white' : 'bg-slate-200 text-slate-700'
+              }`}>
+                {categoryCounts.regular}
+              </span>
+            </button>
+
+            <button
+              onClick={() => setSelectedCategory('guest')}
+              className={`px-3 py-1.5 rounded-lg font-bold text-xs transition cursor-pointer shrink-0 flex items-center gap-1.5 ${
+                selectedCategory === 'guest'
+                  ? 'bg-amber-700 text-white shadow-2xs'
+                  : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+              }`}
+            >
+              <span>Guest Faculty</span>
+              <span className={`px-1.5 py-0.2 rounded-full text-[10px] ${
+                selectedCategory === 'guest' ? 'bg-white/20 text-white' : 'bg-slate-200 text-slate-700'
+              }`}>
+                {categoryCounts.guest}
+              </span>
+            </button>
           </div>
         </div>
 
@@ -238,9 +312,15 @@ export const FacultyPage: React.FC<FacultyPageProps> = ({
                   </div>
 
                   <div className="min-w-0 flex-1">
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-amber-700 bg-amber-100/70 px-2 py-0.5 rounded inline-block mb-1">
-                      {member.designation}
-                    </span>
+                    {getFacultyCategory(member) === 'guest' || getFacultyCategory(member) === 'visiting' || getFacultyCategory(member) === 'regular_guest' ? (
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-amber-800 bg-amber-100/90 border border-amber-300 px-2 py-0.5 rounded inline-block mb-1">
+                        {member.designation}
+                      </span>
+                    ) : (
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-blue-900 bg-blue-100/80 border border-blue-200 px-2 py-0.5 rounded inline-block mb-1">
+                        {member.designation}
+                      </span>
+                    )}
                     <h3 className="font-serif-academic text-base sm:text-lg font-bold text-[#0c2340] leading-snug">
                       {member.name}
                     </h3>
@@ -368,7 +448,7 @@ export const FacultyPage: React.FC<FacultyPageProps> = ({
                   className="w-16 h-16 rounded-xl object-cover border-2 border-amber-400"
                 />
                 <div>
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-amber-400 block">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-amber-400 block mb-1">
                     {selectedFaculty.designation}
                   </span>
                   <h3 className="font-serif-academic text-xl font-bold text-white">

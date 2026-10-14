@@ -1,0 +1,177 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 600" width="100%" height="100%">
+  <defs>
+    <style>
+      @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@900&amp;family=Noto+Sans+Devanagari:wght@800;900&amp;family=Noto+Sans+Oriya:wght@800;900&amp;display=swap');
+      .estd-text { font-family: 'Cinzel', serif, 'Times New Roman'; font-size: 32px; font-weight: 900; fill: #000; letter-spacing: 1px; }
+      .sanskrit-text { font-family: 'Noto Sans Devanagari', 'Cinzel', serif; font-size: 27px; font-weight: 900; fill: #000; letter-spacing: 1.2px; }
+      .odia-text { font-family: 'Noto Sans Oriya', 'Kalinga', sans-serif; font-size: 25px; font-weight: 900; fill: #000; letter-spacing: 1.5px; }
+    </style>
+    <!-- Arched path for Sanskrit motto: curving upwards over the mountain base -->
+    <path id="sanskritMottoPath" d="M 168 490 C 220 445 380 445 432 490" fill="none" />
+    <!-- Bottom arc path for Odia inscription: curving along the lower circular rim -->
+    <path id="odiaInscriptionPath" d="M 120 496 A 248 248 0 0 0 480 496" fill="none" />
+  </defs>
+
+  <!-- Background: Clean transparent/white -->
+  <circle cx="300" cy="320" r="268" fill="#ffffff" />
+
+  <!-- Top Temple Spire / Kalasha Finial -->
+  <g fill="#000" stroke="#000" stroke-linejoin="round">
+    <!-- Top Spire needle -->
+    <path d="M 300 16 L 303 52 L 297 52 Z" stroke-width="1.5" />
+    <circle cx="300" cy="24" r="3.5" />
+    <!-- Kalasha Urn Body & Rings -->
+    <ellipse cx="300" cy="48" rx="8" ry="5" />
+    <ellipse cx="300" cy="62" rx="14" ry="9" />
+    <path d="M 288 71 C 292 73 308 73 312 71 L 316 78 C 310 82 290 82 284 78 Z" />
+    <!-- Small base connecting to outer circle -->
+    <rect x="294" y="77" width="12" height="7" rx="1" />
+  </g>
+
+  <!-- Outer Concentric Rings -->
+  <!-- Outer thick black border circle -->
+  <circle cx="300" cy="320" r="265" fill="none" stroke="#000" stroke-width="8.5" />
+  <!-- Inner boundary concentric ring -->
+  <circle cx="300" cy="320" r="255" fill="none" stroke="#000" stroke-width="2.5" />
+  <circle cx="300" cy="320" r="222" fill="none" stroke="#000" stroke-width="3.5" />
+
+  <!-- Side decorative scroll brackets (left & right at outer perimeter) -->
+  <!-- Left bracket -->
+  <path d="M 40 280 C 35 305 38 340 46 368 C 37 340 35 305 40 280 Z" fill="#000" stroke="#000" stroke-width="2" />
+  <path d="M 50 300 C 47 318 49 342 54 358" fill="none" stroke="#000" stroke-width="2.5" stroke-linecap="round" />
+  <!-- Right bracket -->
+  <path d="M 560 280 C 565 305 562 340 554 368 C 563 340 565 305 560 280 Z" fill="#000" stroke="#000" stroke-width="2" />
+  <path d="M 550 300 C 553 318 551 342 546 358" fill="none" stroke="#000" stroke-width="2.5" stroke-linecap="round" />
+
+  <!-- Central Upper Canopy & Hanging Diya (Oil Lamp) -->
+  <!-- Vertical hanging rod -->
+  <line x1="300" y1="98" x2="300" y2="162" stroke="#000" stroke-width="3" />
+  
+  <!-- Inverted Teardrop Canopy Frame -->
+  <path d="M 300 152 C 280 172 250 215 250 248 C 250 262 256 270 262 276 L 338 276 C 344 270 350 262 350 248 C 350 215 320 172 300 152 Z" fill="#fff" stroke="#000" stroke-width="3" />
+
+  <!-- Diya Medallion Double Circle -->
+  <circle cx="300" cy="235" r="46" fill="#fff" stroke="#000" stroke-width="4.5" />
+  <circle cx="300" cy="235" r="41" fill="none" stroke="#000" stroke-width="1.5" />
+
+  <!-- Burning Diya (Oil Lamp) Inside Medallion -->
+  <!-- Crescent bowl -->
+  <path d="M 272 235 C 278 253 322 253 328 235 C 318 244 282 244 272 235 Z" fill="#000" stroke="#000" stroke-width="1" />
+  <!-- Diya Flame -->
+  <path d="M 300 204 C 291 216 291 226 300 233 C 309 226 309 216 300 204 Z" fill="#000" />
+
+  <!-- Central Solid Black Mountain Triangle -->
+  <path d="M 145 470 L 300 268 L 455 470 Z" fill="#000" stroke="#000" stroke-width="2" />
+
+  <!-- Boita (Ancient Maritime Cargo Boat) in Crisp White -->
+  <g fill="#fff" stroke="#000">
+    <!-- Boat Hull -->
+    <path d="M 235 372 C 248 406 352 406 365 372 C 335 379 265 379 235 372 Z" fill="#fff" stroke="#000" stroke-width="3" />
+    
+    <!-- Lower Deckhouse with 3 Windows (matching authentic college crest) -->
+    <rect x="278" y="348" width="44" height="24" rx="2" fill="#fff" stroke="#000" stroke-width="2.5" />
+    <!-- 3 Windows in lower cabin -->
+    <rect x="283" y="354" width="8" height="9" fill="#000" />
+    <rect x="296" y="354" width="8" height="9" fill="#000" />
+    <rect x="309" y="354" width="8" height="9" fill="#000" />
+
+    <!-- Middle Deckhouse Tier -->
+    <rect x="287" y="333" width="26" height="15" rx="1.5" fill="#fff" stroke="#000" stroke-width="2" />
+    <rect x="296" y="337" width="8" height="7" fill="#000" />
+
+    <!-- Top Cabin Lookout Box & Post -->
+    <rect x="296" y="324" width="8" height="9" fill="#fff" stroke="#000" stroke-width="1.8" />
+    <!-- Bow post / flagpole on prow -->
+    <line x1="245" y1="371" x2="245" y2="355" stroke="#fff" stroke-width="2.5" stroke-linecap="round" />
+  </g>
+
+  <!-- Flowing White River Waves Beneath the Boat -->
+  <g fill="none" stroke="#fff" stroke-width="3.5" stroke-linecap="round">
+    <path d="M 158 450 Q 195 432 235 450 T 310 450 T 385 450 T 442 450" />
+    <path d="M 168 434 Q 205 416 245 434 T 320 434 T 395 434 T 432 434" />
+    <path d="M 182 418 Q 218 400 255 418 T 330 418 T 405 418 T 418 418" />
+    <path d="M 200 402 Q 235 386 270 402 T 340 402 T 400 402" />
+  </g>
+
+  <!-- Left Side: Open Book & Quill Pen with Inkpot -->
+  <g stroke="#000" stroke-linecap="round" stroke-linejoin="round">
+    <!-- Open Book Pages (Palm leaf manuscript) -->
+    <path d="M 142 245 L 176 230 L 204 290 L 170 308 Z" fill="#fff" stroke-width="3.2" />
+    <path d="M 176 230 L 208 244 L 178 316 L 170 308 Z" fill="#fff" stroke-width="3.2" />
+    <!-- Book Center Spine -->
+    <line x1="170" y1="308" x2="176" y2="230" stroke-width="3" />
+    <!-- Left page text lines -->
+    <line x1="152" y1="252" x2="169" y2="244" stroke-width="2" />
+    <line x1="156" y1="264" x2="171" y2="256" stroke-width="2" />
+    <line x1="160" y1="276" x2="173" y2="268" stroke-width="2" />
+    <line x1="164" y1="288" x2="175" y2="280" stroke-width="2" />
+    <!-- Right page text lines -->
+    <line x1="180" y1="246" x2="198" y2="255" stroke-width="2" />
+    <line x1="179" y1="258" x2="194" y2="267" stroke-width="2" />
+    <line x1="177" y1="270" x2="190" y2="279" stroke-width="2" />
+    <line x1="175" y1="282" x2="186" y2="291" stroke-width="2" />
+
+    <!-- Inkpot (Rounded Flask with Ribbed Base) -->
+    <path d="M 194 305 C 194 290 224 290 224 305 C 224 318 194 318 194 305 Z" fill="#fff" stroke-width="3" />
+    <rect x="202" y="295" width="14" height="6" rx="1" fill="#000" />
+    <path d="M 200 304 C 200 314 218 314 218 304" fill="none" stroke-width="1.8" />
+
+    <!-- Long Feather Quill Pen angled upward to the left -->
+    <path d="M 210 296 C 216 270 234 220 258 178 C 248 200 234 228 228 252 C 220 250 212 258 210 270 Z" fill="#fff" stroke-width="2.5" />
+    <line x1="210" y1="296" x2="258" y2="178" stroke-width="2" />
+  </g>
+
+  <!-- Right Side: Stylus (Lekhani) and Inkpots -->
+  <g stroke="#000" stroke-linecap="round" stroke-linejoin="round">
+    <!-- Inkpot on right -->
+    <path d="M 406 308 C 406 293 434 293 434 308 C 434 321 406 321 406 308 Z" fill="#fff" stroke-width="3" />
+    <rect x="413" y="298" width="14" height="6" rx="1" fill="#000" />
+    
+    <!-- Stylus / Lekhani Pen angled down into inkpot -->
+    <path d="M 420 302 L 446 195 C 452 216 466 230 492 242 C 474 242 458 255 452 276 Z" fill="#fff" stroke-width="3" />
+    <line x1="420" y1="302" x2="446" y1="195" stroke-width="2.5" />
+
+    <!-- Left ink vessel on right side -->
+    <path d="M 372 308 C 372 293 398 293 398 308 C 398 321 372 321 372 308 Z" fill="#fff" stroke-width="3" />
+    <rect x="378" y="298" width="14" height="6" rx="1" fill="#000" />
+  </g>
+
+  <!-- Ribbon Banner Across Lower Section -->
+  <g id="bannerRibbon">
+    <!-- Left Ribbon Fold "ESTD" -->
+    <!-- Ribbon swallowtail cutout tail -->
+    <path d="M 22 435 L 145 435 L 154 492 L 32 492 L 50 463 Z" fill="#fff" stroke="#000" stroke-width="4.5" stroke-linejoin="round" />
+    
+    <!-- Right Ribbon Fold "1960" -->
+    <!-- Ribbon swallowtail cutout tail -->
+    <path d="M 578 435 L 455 435 L 446 492 L 568 492 L 550 463 Z" fill="#fff" stroke="#000" stroke-width="4.5" stroke-linejoin="round" />
+
+    <!-- Center Arched Ribbon Banner for Sanskrit Motto -->
+    <path d="M 145 435 C 195 480 405 480 455 435 L 446 502 C 392 546 208 546 154 502 Z" fill="#fff" stroke="#000" stroke-width="4.5" stroke-linejoin="round" />
+    <path d="M 154 502 C 208 540 392 540 446 502" fill="none" stroke="#000" stroke-width="2.2" />
+
+    <!-- Crease Fold Shadow Triangles -->
+    <polygon points="145,435 154,492 140,496" fill="#000" />
+    <polygon points="455,435 446,492 460,496" fill="#000" />
+
+    <!-- ESTD Text -->
+    <text x="88" y="473" class="estd-text" text-anchor="middle">ESTD</text>
+
+    <!-- 1960 Text -->
+    <text x="512" y="473" class="estd-text" text-anchor="middle">1960</text>
+  </g>
+
+  <!-- Sanskrit Motto in Center Arched Ribbon: नास्ति प्रज्ञा समं आभा -->
+  <text class="sanskrit-text">
+    <textPath href="#sanskritMottoPath" startOffset="50%" text-anchor="middle">
+      नास्ति प्रज्ञा समं आभा
+    </textPath>
+  </text>
+
+  <!-- Odia Inscription along Bottom Circular Arc: ପଞ୍ଚାୟତ ମହାବିଦ୍ୟାଳୟ, ବରଗଡ଼ -->
+  <text class="odia-text">
+    <textPath href="#odiaInscriptionPath" startOffset="50%" text-anchor="middle">
+      ପଞ୍ଚାୟତ ମହାବିଦ୍ୟାଳୟ, ବରଗଡ଼
+    </textPath>
+  </text>
+</svg>

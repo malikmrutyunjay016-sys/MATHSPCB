@@ -8,7 +8,8 @@ import {
   Sparkles,
   ArrowRight,
 } from 'lucide-react';
-import { DepartmentSettings, Faculty, Student, Book } from '../types';
+import { DepartmentSettings, Faculty, Student, Book, getFacultyCategory } from '../types';
+import { initialStudents } from '../data/initialData';
 
 interface DepartmentStatsProps {
   settings: DepartmentSettings;
@@ -25,38 +26,55 @@ export const DepartmentStats: React.FC<DepartmentStatsProps> = ({
   books = [],
   onNavigate,
 }) => {
-  const facultyCount = faculty && faculty.length > 0 ? faculty.length : (settings.facultyCount || 8);
+  const facultyCount = faculty && faculty.length > 0 ? faculty.length : (settings.facultyCount || 6);
   const permanentFacultyList = useMemo(
-    () =>
-      (faculty || []).filter(
-        (f) =>
-          !f.designation.toLowerCase().includes('guest') &&
-          !f.designation.toLowerCase().includes('consultant')
-      ),
+    () => (faculty || []).filter((f) => getFacultyCategory(f) === 'regular'),
     [faculty]
   );
   const guestFacultyList = useMemo(
-    () =>
-      (faculty || []).filter(
-        (f) =>
-          f.designation.toLowerCase().includes('guest') ||
-          f.designation.toLowerCase().includes('consultant')
-      ),
+    () => (faculty || []).filter((f) => getFacultyCategory(f) !== 'regular'),
     [faculty]
   );
 
   const permanentFacultyCount = permanentFacultyList.length;
   const guestFacultyCount = guestFacultyList.length;
 
-  const studentCount = students && students.length > 0 ? students.length : (settings.studentCount || 9);
+  const currentStudents = useMemo(() => {
+    return students && students.length > 0 ? students : initialStudents;
+  }, [students]);
+
+  const studentCount = currentStudents.length;
+
   const ugStudentsCount = useMemo(
-    () => (students || []).filter((s) => s.course.includes('UG')).length,
-    [students]
+    () =>
+      currentStudents.filter((s) => {
+        const c = (s?.course || '').toUpperCase();
+        return (
+          c.includes('UG') ||
+          c.includes('B.SC') ||
+          c.includes('NEP') ||
+          c.includes('AEDP') ||
+          c.includes('CBCS')
+        );
+      }).length,
+    [currentStudents]
   );
   const pgStudentsCount = useMemo(
-    () => (students || []).filter((s) => s.course.includes('PG')).length,
-    [students]
+    () =>
+      currentStudents.filter((s) => {
+        const c = (s?.course || '').toUpperCase();
+        return c.includes('PG') || c.includes('M.SC');
+      }).length,
+    [currentStudents]
   );
+  const studentBatchesCount = useMemo(() => {
+    const yearsSet = new Set<string>();
+    currentStudents.forEach((s) => {
+      if (s.academicYear) yearsSet.add(s.academicYear);
+      else if (s.admissionYear) yearsSet.add(s.admissionYear);
+    });
+    return yearsSet.size || 3;
+  }, [currentStudents]);
 
   const totalBookVolumes = useMemo(
     () =>
@@ -65,14 +83,18 @@ export const DepartmentStats: React.FC<DepartmentStatsProps> = ({
         : (settings.bookCount || 10),
     [books, settings.bookCount]
   );
+  const bookTitlesCount = useMemo(
+    () => (books && books.length > 0 ? books.length : (settings.bookCount || 10)),
+    [books, settings.bookCount]
+  );
 
   const statItems = [
     {
       id: 'faculty',
-      label: 'Permanent & Guest Faculty',
+      label: 'Regular & Guest Faculty',
       value: facultyCount,
       suffix: '',
-      desc: `${permanentFacultyCount} Permanent Faculty • ${guestFacultyCount} Guest Faculty`,
+      desc: `${permanentFacultyCount} Regular • ${guestFacultyCount} Guest Faculty`,
       badge: `${facultyCount} In Directory`,
       icon: Users,
       tab: 'faculty',
@@ -84,7 +106,7 @@ export const DepartmentStats: React.FC<DepartmentStatsProps> = ({
       value: studentCount,
       suffix: '',
       desc: `${ugStudentsCount} UG Scholars • ${pgStudentsCount} PG Scholars`,
-      badge: `${studentCount} Active Records`,
+      badge: `${studentCount} Enrolled (${studentBatchesCount} Batches)`,
       icon: GraduationCap,
       tab: 'students',
       color: 'from-amber-600 to-yellow-600',
@@ -94,11 +116,11 @@ export const DepartmentStats: React.FC<DepartmentStatsProps> = ({
       label: 'Department Library Volumes',
       value: totalBookVolumes,
       suffix: '',
-      desc: `${totalBookVolumes} cataloged volumes`,
-      badge: `${totalBookVolumes} Cataloged Volumes`,
+      desc: `${bookTitlesCount} Titles • ${totalBookVolumes} Physical Copies`,
+      badge: `${totalBookVolumes} Volumes (${bookTitlesCount} Titles)`,
       icon: BookOpen,
       tab: 'library',
-      color: 'from-purple-600 to-indigo-700',
+      color: 'from-emerald-600 to-teal-700',
     },
     {
       id: 'syllabus',
@@ -145,11 +167,22 @@ export const DepartmentStats: React.FC<DepartmentStatsProps> = ({
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 sm:gap-6">
           {statItems.map((stat, idx) => {
             const Icon = stat.icon;
+            const isFaculty = stat.id === 'faculty';
+            const isStudents = stat.id === 'students';
+            const isBooks = stat.id === 'books';
             return (
               <div
                 key={idx}
                 onClick={() => onNavigate(stat.tab)}
-                className="bg-white/5 hover:bg-white/10 border border-white/10 hover:border-amber-400/50 rounded-xl p-5 transition-all duration-300 transform hover:-translate-y-1 cursor-pointer flex flex-col justify-between group shadow-sm relative overflow-hidden"
+                className={`bg-white/5 hover:bg-white/10 border ${
+                  isFaculty
+                    ? 'border-blue-400/40 hover:border-blue-300/80 bg-blue-950/20 ring-1 ring-blue-500/20'
+                    : isStudents
+                    ? 'border-amber-400/50 hover:border-amber-300/90 bg-amber-950/25 ring-1 ring-amber-500/30 shadow-lg shadow-amber-950/20'
+                    : isBooks
+                    ? 'border-emerald-400/50 hover:border-emerald-300/90 bg-emerald-950/25 ring-1 ring-emerald-500/30 shadow-lg shadow-emerald-950/20'
+                    : 'border-white/10 hover:border-amber-400/50'
+                } rounded-xl p-5 transition-all duration-300 transform hover:-translate-y-1 cursor-pointer flex flex-col justify-between group shadow-sm relative overflow-hidden`}
               >
                 <div className="flex items-center justify-between mb-4">
                   <div
@@ -157,7 +190,9 @@ export const DepartmentStats: React.FC<DepartmentStatsProps> = ({
                   >
                     <Icon className="w-5 h-5" />
                   </div>
-                  <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-blue-500/20 border border-blue-400/30 text-blue-300 text-[10px] font-mono font-bold">
+                  <div
+                    className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-white/10 border border-white/20 text-slate-300 text-[10px] font-mono font-bold tracking-wide"
+                  >
                     <span>OFFICIAL</span>
                   </div>
                 </div>
@@ -178,7 +213,19 @@ export const DepartmentStats: React.FC<DepartmentStatsProps> = ({
                     {stat.desc}
                   </p>
                   <div className="mt-2.5 pt-2 border-t border-white/10 flex items-center justify-between text-[10px] text-slate-400 font-medium">
-                    <span className="text-amber-300/90">{stat.badge}</span>
+                    <span
+                      className={
+                        isStudents
+                          ? 'text-amber-300 font-semibold'
+                          : isBooks
+                          ? 'text-emerald-300 font-semibold'
+                          : isFaculty
+                          ? 'text-blue-300 font-semibold'
+                          : 'text-amber-300/90'
+                      }
+                    >
+                      {stat.badge}
+                    </span>
                     <span className="text-slate-400 group-hover:text-amber-300 transition-colors flex items-center gap-0.5">
                       Explore <ArrowRight className="w-3 h-3" />
                     </span>

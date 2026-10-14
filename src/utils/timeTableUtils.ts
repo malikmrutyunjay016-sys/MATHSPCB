@@ -1056,7 +1056,7 @@ export function getFacultyDesignation(facultyName: string, facultyList?: Faculty
 
   // Check common prefixes or keywords in name
   if (norm.includes('guest') || norm.includes('consultant')) {
-    return 'Guest Faculty / Academic Consultant';
+    return 'Guest Faculty';
   }
   if (
     norm.includes('prof') ||

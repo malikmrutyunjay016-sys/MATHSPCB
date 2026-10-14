@@ -50,10 +50,13 @@ export const CollegeLogo: React.FC<CollegeLogoProps> = ({
       } ${onClick ? 'cursor-pointer' : ''} ${className}`}
     >
       <img
-        src={customLogoUrl || "/college-logo.svg"}
-        alt="College Logo"
+        src={customLogoUrl || "/college-logo.svg?v=2"}
+        alt="Panchayat College, Baragada Official Emblem Logo"
         className="w-full h-full object-contain"
         referrerPolicy="no-referrer"
+        onError={(e) => {
+          (e.target as HTMLImageElement).src = "/college-logo.svg";
+        }}
       />
     </div>
   );

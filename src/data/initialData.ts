@@ -21,7 +21,7 @@ import {
 export const initialSettings: DepartmentSettings = {
   id: 'general',
   facultyCount: 6,
-  studentCount: 192,
+  studentCount: 9,
   courseCount: 4,
   bookCount: 1250,
   yearsOfService: 52,
@@ -122,7 +122,7 @@ export const initialFaculty: Faculty[] = [
   {
     id: 'fac-6',
     name: 'Sri D. N. Behera',
-    designation: 'Guest Faculty / Academic Consultant',
+    designation: 'Guest Faculty',
     qualification: 'M.Sc., B.Ed., NET',
     specialization: 'Discrete Mathematics & Graph Theory',
     email: 'dn.behera@panchayatcollege.edu.in',

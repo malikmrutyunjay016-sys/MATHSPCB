@@ -296,15 +296,6 @@ export function subscribeToStudents(
       q,
       async (snapshot) => {
         if (snapshot.empty) {
-          if (isDatabaseSeededSync()) {
-            callback([]);
-            return;
-          }
-          const seeded = await checkIsSeeded();
-          if (seeded) {
-            callback([]);
-            return;
-          }
           callback(initialStudents);
           ensureDatabaseSeeded();
           return;

@@ -1,7 +1,10 @@
+export type FacultyCategory = 'regular' | 'regular_guest' | 'guest' | 'visiting';
+
 export interface Faculty {
   id: string;
   name: string;
   designation: string;
+  facultyType?: FacultyCategory | string;
   qualification: string;
   specialization: string;
   email: string;
@@ -12,6 +15,18 @@ export interface Faculty {
   order?: number;
   createdAt?: string;
   updatedAt?: string;
+}
+
+export function getFacultyCategory(f: { designation?: string; facultyType?: string }): FacultyCategory {
+  if (f.facultyType === 'regular_guest' || f.facultyType === 'regular guest') return 'regular_guest';
+  if (f.facultyType === 'guest') return 'guest';
+  if (f.facultyType === 'visiting') return 'visiting';
+  if (f.facultyType === 'regular') return 'regular';
+  const d = (f.designation || '').toLowerCase();
+  if (d.includes('regular guest') || (d.includes('guest') && d.includes('regular'))) return 'regular_guest';
+  if (d.includes('visiting')) return 'visiting';
+  if (d.includes('guest') || d.includes('consultant') || d.includes('adhoc') || d.includes('ad hoc')) return 'guest';
+  return 'regular';
 }
 
 export type AllowedCourse = 'UG NEP' | 'UG AEDP' | 'UG CBCS' | 'PG';

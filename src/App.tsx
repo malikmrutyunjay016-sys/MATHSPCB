@@ -897,6 +897,8 @@ function AppContent() {
             onNavigate={handleNavigate}
             notices={notices}
             faculty={faculty}
+            students={students}
+            books={books}
             settings={settings}
             facilities={facilities}
             onAddFacility={() => setFacilityModal({ isOpen: true, item: null })}

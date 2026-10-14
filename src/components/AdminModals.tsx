@@ -3,6 +3,8 @@ import { X, Check, AlertTriangle, Upload, Image } from 'lucide-react';
 import { FacultyPhotoPicker } from './FacultyPhotoPicker';
 import {
   Faculty,
+  FacultyCategory,
+  getFacultyCategory,
   Student,
   Facility,
   Book,
@@ -89,6 +91,7 @@ export const FacultyModal: React.FC<{
     id: '',
     name: '',
     designation: 'Assistant Professor',
+    facultyType: 'regular',
     qualification: 'M.Sc., Ph.D.',
     specialization: 'Analysis / Algebra',
     email: '',
@@ -108,7 +111,11 @@ export const FacultyModal: React.FC<{
     setIsSubmitting(false);
 
     if (faculty) {
-      setForm({ ...faculty });
+      const detectedCategory = getFacultyCategory(faculty);
+      setForm({
+        ...faculty,
+        facultyType: faculty.facultyType || detectedCategory,
+      });
     } else {
       const nextOrder =
         existingFaculty && existingFaculty.length > 0
@@ -118,6 +125,7 @@ export const FacultyModal: React.FC<{
         id: `fac-${Date.now()}`,
         name: '',
         designation: 'Assistant Professor',
+        facultyType: 'regular',
         qualification: 'M.Sc., Ph.D.',
         specialization: 'Analysis / Algebra',
         email: '',
@@ -148,12 +156,14 @@ export const FacultyModal: React.FC<{
       const cleanQualification = (form.qualification || '').trim() || 'M.Sc., Ph.D.';
       const cleanSpecialization = (form.specialization || '').trim() || 'Pure & Applied Mathematics';
       const cleanEmail = (form.email || '').trim() || `${cleanName.toLowerCase().replace(/[^a-z0-9]/g, '')}@pcollege.edu.in`;
+      const detectedCategory = form.facultyType || getFacultyCategory({ designation: cleanDesignation });
 
       const finalFaculty: Faculty = {
         ...form,
         id: form.id || `fac-${Date.now()}`,
         name: cleanName,
         designation: cleanDesignation,
+        facultyType: detectedCategory,
         qualification: cleanQualification,
         specialization: cleanSpecialization,
         email: cleanEmail,
@@ -192,6 +202,67 @@ export const FacultyModal: React.FC<{
               <span>{errorMessage}</span>
             </div>
           )}
+
+          {/* Faculty Category / Appointment Cadre Selector */}
+          <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-200">
+            <div className="flex items-center justify-between mb-2">
+              <label className="block font-bold text-slate-700 uppercase text-[11px] tracking-wider">
+                Faculty Cadre / Appointment Type *
+              </label>
+              <span className="text-[10.5px] text-slate-500">
+                Choose appointment type
+              </span>
+            </div>
+
+            <div className="grid grid-cols-2 gap-2.5">
+              {/* Regular Faculty */}
+              <button
+                type="button"
+                onClick={() => {
+                  setForm((prev) => ({
+                    ...prev,
+                    facultyType: 'regular',
+                    designation:
+                      prev.designation.toLowerCase().includes('guest')
+                        ? 'Assistant Professor'
+                        : prev.designation,
+                  }));
+                }}
+                className={`p-3 rounded-lg border text-left transition cursor-pointer flex items-center justify-between ${
+                  form.facultyType === 'regular'
+                    ? 'bg-blue-50 border-blue-500 text-blue-900 shadow-xs'
+                    : 'bg-white border-slate-200 text-slate-700 hover:border-slate-300 hover:bg-slate-100'
+                }`}
+              >
+                <span className="font-bold text-xs">Regular</span>
+                {form.facultyType === 'regular' && <Check className="w-4 h-4 text-blue-600" />}
+              </button>
+
+              {/* Guest Faculty */}
+              <button
+                type="button"
+                onClick={() => {
+                  setForm((prev) => ({
+                    ...prev,
+                    facultyType: 'guest',
+                    designation:
+                      prev.designation === 'Assistant Professor' ||
+                      prev.designation.toLowerCase().includes('professor')
+                        ? 'Guest Faculty'
+                        : prev.designation || 'Guest Faculty',
+                  }));
+                }}
+                className={`p-3 rounded-lg border text-left transition cursor-pointer flex items-center justify-between ${
+                  form.facultyType === 'guest'
+                    ? 'bg-amber-50 border-amber-500 text-amber-900 shadow-xs'
+                    : 'bg-white border-slate-200 text-slate-700 hover:border-slate-300 hover:bg-slate-100'
+                }`}
+              >
+                <span className="font-bold text-xs">Guest Faculty</span>
+                {form.facultyType === 'guest' && <Check className="w-4 h-4 text-amber-600" />}
+              </button>
+            </div>
+          </div>
 
           {/* Order and Name */}
           <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
@@ -236,10 +307,45 @@ export const FacultyModal: React.FC<{
               type="text"
               required
               value={form.designation}
-              onChange={(e) => setForm({ ...form, designation: e.target.value })}
+              onChange={(e) => {
+                const val = e.target.value;
+                const cat = getFacultyCategory({ designation: val, facultyType: form.facultyType });
+                setForm({ ...form, designation: val, facultyType: cat });
+              }}
               className="w-full p-2.5 rounded-lg border border-slate-200 text-xs focus:outline-hidden"
-              placeholder="e.g. Assistant Professor & Head of Department"
+              placeholder="e.g. Assistant Professor, Guest Faculty, etc."
             />
+
+            {/* Quick Designation Presets */}
+            <div className="flex items-center gap-1.5 flex-wrap pt-2">
+              <span className="text-[10px] font-bold text-slate-400 uppercase mr-1">Quick Select:</span>
+              {[
+                { title: 'Assistant Professor', val: 'Assistant Professor', cat: 'regular' as FacultyCategory },
+                { title: 'Associate Professor', val: 'Associate Professor', cat: 'regular' as FacultyCategory },
+                { title: 'Professor', val: 'Professor', cat: 'regular' as FacultyCategory },
+                { title: 'Assistant Professor & HOD', val: 'Assistant Professor & Head of Department', cat: 'regular' as FacultyCategory },
+                { title: 'Guest Faculty', val: 'Guest Faculty', cat: 'guest' as FacultyCategory },
+              ].map((item) => (
+                <button
+                  key={item.val}
+                  type="button"
+                  onClick={() => {
+                    setForm((prev) => ({
+                      ...prev,
+                      designation: item.val,
+                      facultyType: item.cat,
+                    }));
+                  }}
+                  className={`text-[10.5px] px-2.5 py-1 rounded-full border transition cursor-pointer font-medium ${
+                    form.designation === item.val
+                      ? 'bg-blue-100 border-blue-500 text-blue-950 font-bold ring-1 ring-blue-400 shadow-2xs'
+                      : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-100'
+                  }`}
+                >
+                  {item.title}
+                </button>
+              ))}
+            </div>
           </div>
 
           <div className="grid grid-cols-2 gap-4">
