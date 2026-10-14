@@ -31,6 +31,7 @@ import {
   Syllabus,
   GalleryPhoto,
   DownloadItem,
+  CalendarEvent,
 } from '../types';
 import {
   initialFaculty,
@@ -49,6 +50,7 @@ import {
   initialSyllabus,
   initialGallery,
   initialDownloads,
+  initialCalendarEvents,
 } from '../data/initialData';
 
 // Seed Initial Data if collections are empty
@@ -1583,5 +1585,76 @@ export async function deleteDownloadItem(id: string) {
   }
 }
 
+// ------------------- LIVE ACADEMIC CALENDAR & HOLIDAYS -------------------
+export function subscribeToCalendarEvents(
+  callback: (events: CalendarEvent[]) => void,
+  fallback: () => void
+) {
+  const path = 'department_settings/calendar_events';
+  try {
+    const docRef = doc(db, 'department_settings', 'calendar_events');
+    return onSnapshot(
+      docRef,
+      (snapshot) => {
+        if (!snapshot.exists() || !snapshot.data()?.events) {
+          try {
+            const saved = localStorage.getItem('dept_calendar_events_v2');
+            if (saved) {
+              const parsed = JSON.parse(saved);
+              if (Array.isArray(parsed) && parsed.length > 0) {
+                callback(parsed);
+                return;
+              }
+            }
+          } catch {}
+          callback(initialCalendarEvents);
+          // Seed initial live calendar events to Firestore if document does not exist
+          saveCalendarEvents(initialCalendarEvents).catch(() => {});
+          return;
+        }
+        const data = snapshot.data();
+        const eventsList = (data.events || []) as CalendarEvent[];
+        try {
+          localStorage.setItem('dept_calendar_events_v2', JSON.stringify(eventsList));
+        } catch {}
+        callback(eventsList);
+      },
+      (error) => {
+        handleFirestoreError(error, OperationType.GET, path);
+        try {
+          const saved = localStorage.getItem('dept_calendar_events_v2');
+          if (saved) {
+            const parsed = JSON.parse(saved);
+            if (Array.isArray(parsed) && parsed.length > 0) {
+              callback(parsed);
+              return;
+            }
+          }
+        } catch {}
+        fallback();
+      }
+    );
+  } catch (err) {
+    handleFirestoreError(err, OperationType.GET, path);
+    fallback();
+    return () => {};
+  }
+}
 
+export async function saveCalendarEvents(events: CalendarEvent[]) {
+  const path = 'department_settings/calendar_events';
+  try {
+    // Keep local storage synced for offline instant UI
+    try {
+      localStorage.setItem('dept_calendar_events_v2', JSON.stringify(events));
+    } catch {}
 
+    // Persist live to Cloud Firestore so all users receive updates instantly
+    await setDoc(doc(db, 'department_settings', 'calendar_events'), sanitizeForFirestore({
+      events,
+      updatedAt: new Date().toISOString(),
+    }), { merge: true });
+  } catch (err) {
+    handleFirestoreError(err, OperationType.WRITE, path);
+  }
+}

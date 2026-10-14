@@ -16,6 +16,7 @@ import {
   TimeTableSlot,
   Syllabus,
   GalleryPhoto,
+  CalendarEvent,
 } from '../types';
 
 export const BACKUP_FILE_NAME = 'math_dept_database_backup.json';
@@ -40,6 +41,7 @@ export interface DepartmentBackupData {
     contacts: ImportantContact[];
     inquiries: ContactMessage[];
     settings?: DepartmentSettings;
+    calendarEvents?: CalendarEvent[];
   };
 }
 
@@ -389,6 +391,17 @@ export async function restoreAllDataToFirestore(
     }
   }
 
+  // 15. Calendar Events & Holidays
+  if (Array.isArray(d.calendarEvents) && d.calendarEvents.length > 0) {
+    operations.push({
+      ref: doc(db, 'department_settings', 'calendar_events'),
+      data: sanitizeForFirestore({
+        events: d.calendarEvents,
+        updatedAt: new Date().toISOString(),
+      }),
+    });
+  }
+
   // Always sync restored data into localStorage so local offline state updates immediately
   try {
     if (d.settings) localStorage.setItem('dept_settings', JSON.stringify(d.settings));
@@ -405,6 +418,7 @@ export async function restoreAllDataToFirestore(
     if (d.committees) localStorage.setItem('dept_committees', JSON.stringify(d.committees));
     if (d.contacts) localStorage.setItem('dept_contacts', JSON.stringify(d.contacts));
     if (d.inquiries) localStorage.setItem('dept_inquiries', JSON.stringify(d.inquiries));
+    if (d.calendarEvents) localStorage.setItem('dept_calendar_events_v2', JSON.stringify(d.calendarEvents));
   } catch (e) {
     console.warn('Local storage sync notice:', e);
   }

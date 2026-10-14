@@ -17,8 +17,11 @@ import {
   X,
   Zap,
   UserCheck,
+  Radio,
 } from 'lucide-react';
-import { Notice, Faculty } from '../types';
+import { Notice, Faculty, CalendarEvent } from '../types';
+import { subscribeToCalendarEvents, saveCalendarEvents } from '../services/db';
+import { initialCalendarEvents } from '../data/initialData';
 
 interface CalendarNoticesSectionProps {
   notices: Notice[];
@@ -27,19 +30,6 @@ interface CalendarNoticesSectionProps {
   isAdmin?: boolean;
   onSaveNotice?: (notice: Notice) => void;
   faculty?: Faculty[];
-}
-
-interface CalendarEvent {
-  id: string;
-  year: number;
-  month: number; // 0-11
-  day: number;
-  title: string;
-  isHoliday: boolean;
-  isDoingNow: boolean;
-  source?: 'extracted' | 'custom' | 'faculty-leave';
-  facultyName?: string;
-  leaveType?: string;
 }
 
 const facultyColors = [
@@ -93,14 +83,42 @@ export const CalendarNoticesSection: React.FC<CalendarNoticesSectionProps> = ({
   ];
   const activeMonthName = `${monthNames[month]} ${year}`;
 
-  // Stored calendar events & holidays (persisted in localStorage)
+  // Stored calendar events & holidays (persisted in localStorage + real-time Cloud Firestore live for all)
   const [events, setEvents] = useState<CalendarEvent[]>(() => {
     try {
       const saved = localStorage.getItem('dept_calendar_events_v2');
-      if (saved) return JSON.parse(saved);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
     } catch {}
-    return [];
+    return initialCalendarEvents;
   });
+
+  // Real-time live synchronization for all visitors and students
+  useEffect(() => {
+    const unsub = subscribeToCalendarEvents(
+      (liveEvents) => {
+        if (Array.isArray(liveEvents) && liveEvents.length > 0) {
+          setEvents(liveEvents);
+        }
+      },
+      () => {
+        try {
+          const saved = localStorage.getItem('dept_calendar_events_v2');
+          if (saved) {
+            const parsed = JSON.parse(saved);
+            if (Array.isArray(parsed) && parsed.length > 0) {
+              setEvents(parsed);
+              return;
+            }
+          }
+        } catch {}
+        setEvents(initialCalendarEvents);
+      }
+    );
+    return () => unsub();
+  }, []);
 
   // Modals state
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
@@ -153,12 +171,12 @@ export const CalendarNoticesSection: React.FC<CalendarNoticesSectionProps> = ({
     }
   };
 
-  // Save events to localStorage
+  // Save events to both localStorage and Cloud Firestore so it is LIVE FOR ALL users
   const saveEventsToStorage = (updated: CalendarEvent[]) => {
     setEvents(updated);
-    try {
-      localStorage.setItem('dept_calendar_events_v2', JSON.stringify(updated));
-    } catch {}
+    saveCalendarEvents(updated).catch((err) => {
+      console.warn('Real-time sync to cloud warning:', err);
+    });
   };
 
   const isSunday = (day: number) => {
@@ -420,9 +438,16 @@ export const CalendarNoticesSection: React.FC<CalendarNoticesSectionProps> = ({
         {/* Header Ribbon & Admin Tools */}
         <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 border-b border-slate-800 pb-4">
           <div>
-            <div className="flex items-center gap-2 text-amber-400 text-xs font-bold uppercase tracking-widest">
-              <BellRing className="w-4 h-4 text-amber-400" />
-              <span>Department Notices & Academic Calendar</span>
+            <div className="flex flex-wrap items-center gap-2 text-amber-400 text-xs font-bold uppercase tracking-widest">
+              <div className="flex items-center gap-1.5">
+                <BellRing className="w-4 h-4 text-amber-400" />
+                <span>Department Notices & Academic Calendar</span>
+              </div>
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wider bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 shadow-xs">
+                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span>
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 -ml-2.5"></span>
+                LIVE FOR ALL
+              </span>
             </div>
             <h2 className="font-serif-academic text-3xl sm:text-4xl font-extrabold text-white mt-1">
               {activeMonthName}
@@ -651,8 +676,14 @@ export const CalendarNoticesSection: React.FC<CalendarNoticesSectionProps> = ({
 
           {/* Right Column: Notices List & "Doing Now" management */}
           <div className="lg:col-span-7 space-y-4">
-            <div className="flex items-center justify-between">
-              <h3 className="font-serif-academic text-lg font-bold text-white">Recent Notices & Active Events</h3>
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div className="flex items-center gap-2">
+                <h3 className="font-serif-academic text-lg font-bold text-white">Recent Notices & Active Events</h3>
+                <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-blue-500/20 text-blue-300 border border-blue-500/30">
+                  <span className="w-1.5 h-1.5 rounded-full bg-blue-400 animate-pulse"></span>
+                  LIVE FEED
+                </span>
+              </div>
               {isAdmin && (
                 <span className="text-[11px] text-amber-400 font-semibold bg-amber-500/10 px-2 py-1 rounded border border-amber-500/20">
                   Admin Mode: Faculty leaves visible to admin only

@@ -277,3 +277,19 @@ export interface DownloadItem {
   updatedAt?: string;
 }
 
+export interface CalendarEvent {
+  id: string;
+  year: number;
+  month: number; // 0-11
+  day: number;
+  title: string;
+  isHoliday: boolean;
+  isDoingNow: boolean;
+  source?: 'extracted' | 'custom' | 'faculty-leave';
+  facultyName?: string;
+  leaveType?: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+

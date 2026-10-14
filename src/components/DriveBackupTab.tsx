@@ -146,6 +146,15 @@ export const DriveBackupTab: React.FC<DriveBackupTabProps> = ({
   };
 
   const prepareBackupPayload = (): DepartmentBackupData => {
+    const calendarEvents = (() => {
+      try {
+        const saved = localStorage.getItem('dept_calendar_events_v2');
+        return saved ? JSON.parse(saved) : [];
+      } catch {
+        return [];
+      }
+    })();
+
     return {
       version: '2.0',
       backupDate: new Date().toISOString(),
@@ -166,6 +175,7 @@ export const DriveBackupTab: React.FC<DriveBackupTabProps> = ({
         contacts,
         inquiries,
         settings,
+        calendarEvents,
       },
     };
   };
