@@ -9,7 +9,6 @@ import {
   ArrowRight,
 } from 'lucide-react';
 import { DepartmentSettings, Faculty, Student, Book, getFacultyCategory } from '../types';
-import { initialStudents } from '../data/initialData';
 
 interface DepartmentStatsProps {
   settings: DepartmentSettings;
@@ -40,7 +39,7 @@ export const DepartmentStats: React.FC<DepartmentStatsProps> = ({
   const guestFacultyCount = guestFacultyList.length;
 
   const currentStudents = useMemo(() => {
-    return students && students.length > 0 ? students : initialStudents;
+    return students || [];
   }, [students]);
 
   const studentCount = currentStudents.length;
@@ -68,12 +67,13 @@ export const DepartmentStats: React.FC<DepartmentStatsProps> = ({
     [currentStudents]
   );
   const studentBatchesCount = useMemo(() => {
+    if (currentStudents.length === 0) return 0;
     const yearsSet = new Set<string>();
     currentStudents.forEach((s) => {
       if (s.academicYear) yearsSet.add(s.academicYear);
       else if (s.admissionYear) yearsSet.add(s.admissionYear);
     });
-    return yearsSet.size || 3;
+    return yearsSet.size;
   }, [currentStudents]);
 
   const totalBookVolumes = useMemo(
@@ -105,8 +105,14 @@ export const DepartmentStats: React.FC<DepartmentStatsProps> = ({
       label: 'Enrolled Mathematics Scholars',
       value: studentCount,
       suffix: '',
-      desc: `${ugStudentsCount} UG Scholars • ${pgStudentsCount} PG Scholars`,
-      badge: `${studentCount} Enrolled (${studentBatchesCount} Batches)`,
+      desc:
+        studentCount > 0
+          ? `${ugStudentsCount} UG Scholars • ${pgStudentsCount} PG Scholars`
+          : '0 UG Scholars • 0 PG Scholars',
+      badge:
+        studentCount > 0
+          ? `${studentCount} Enrolled (${studentBatchesCount} ${studentBatchesCount === 1 ? 'Batch' : 'Batches'})`
+          : '0 Enrolled',
       icon: GraduationCap,
       tab: 'students',
       color: 'from-amber-600 to-yellow-600',

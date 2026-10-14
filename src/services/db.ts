@@ -84,32 +84,12 @@ export async function seedInitialDatabase() {
     const settingsRef = doc(db, 'department_settings', 'general');
     await setDoc(settingsRef, sanitizeForFirestore({ ...initialSettings, isSeeded: true }), { merge: true });
 
-    // Seed Faculty
+    // Faculty
     for (const item of initialFaculty) {
       await setDoc(doc(db, 'faculty', item.id), sanitizeForFirestore(item), { merge: true });
     }
 
-    // Seed Students & Credentials
-    for (const item of initialStudents) {
-      await setDoc(doc(db, 'students', item.id), sanitizeForFirestore(item), { merge: true });
-      const uniqueId = item.rollNumber;
-      await setDoc(
-        doc(db, 'student_credentials', uniqueId),
-        sanitizeForFirestore({
-          id: uniqueId,
-          uniqueId: uniqueId,
-          studentId: item.id,
-          rollNumber: item.rollNumber,
-          studentName: item.name,
-          password: `Math@${item.admissionYear || '2026'}`,
-          course: item.course,
-          admissionYear: item.admissionYear || '2026',
-          createdAt: item.createdAt || new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-        }),
-        { merge: true }
-      );
-    }
+    // Students start empty: only new updates and registrations will be counted
 
     // Seed Facilities
     for (const item of initialFacilities) {
@@ -296,8 +276,7 @@ export function subscribeToStudents(
       q,
       async (snapshot) => {
         if (snapshot.empty) {
-          callback(initialStudents);
-          ensureDatabaseSeeded();
+          callback([]);
           return;
         }
         const data = snapshot.docs.map((d) => ({ id: d.id, ...d.data() } as Student));
@@ -306,12 +285,12 @@ export function subscribeToStudents(
       },
       (error) => {
         console.warn('Students snapshot fallback:', error);
-        fallback();
+        callback([]);
       }
     );
   } catch (error) {
     handleFirestoreError(error, OperationType.GET, path);
-    fallback();
+    callback([]);
     return () => {};
   }
 }
@@ -389,6 +368,25 @@ export async function deleteStudent(id: string) {
   }
 }
 
+export async function clearAllStudents() {
+  const path = 'students';
+  try {
+    const studentsSnap = await getDocs(collection(db, 'students'));
+    for (const d of studentsSnap.docs) {
+      await deleteDoc(doc(db, 'students', d.id));
+    }
+    const credsSnap = await getDocs(collection(db, 'student_credentials'));
+    for (const d of credsSnap.docs) {
+      await deleteDoc(doc(db, 'student_credentials', d.id));
+    }
+    await updateDoc(doc(db, 'department_settings', 'general'), {
+      studentCount: 0,
+    }).catch(() => {});
+  } catch (err) {
+    handleFirestoreError(err, OperationType.DELETE, path);
+  }
+}
+
 // ------------------- STUDENT CREDENTIALS (ADMIN VAULT & PORTAL) -------------------
 export function subscribeToStudentCredentials(
   callback: (credentials: StudentCredential[]) => void,
@@ -401,17 +399,7 @@ export function subscribeToStudentCredentials(
       q,
       async (snapshot) => {
         if (snapshot.empty) {
-          if (isDatabaseSeededSync()) {
-            callback([]);
-            return;
-          }
-          const seeded = await checkIsSeeded();
-          if (seeded) {
-            callback([]);
-            return;
-          }
-          callback(initialCredentials);
-          ensureDatabaseSeeded();
+          callback([]);
           return;
         }
         const data = snapshot.docs.map((d) => ({ id: d.id, ...d.data() } as StudentCredential));
@@ -420,11 +408,11 @@ export function subscribeToStudentCredentials(
       },
       (error) => {
         console.warn('Student credentials snapshot fallback:', error);
-        fallback();
+        callback([]);
       }
     );
   } catch {
-    fallback();
+    callback([]);
     return () => {};
   }
 }
