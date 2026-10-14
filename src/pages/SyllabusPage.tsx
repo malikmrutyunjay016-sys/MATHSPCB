@@ -19,10 +19,13 @@ import {
   Sparkles,
   EyeOff,
   Lock,
+  Loader2,
+  AlertTriangle,
 } from 'lucide-react';
 import { Syllabus, SyllabusCategory } from '../types';
 import { useAuth } from '../context/AuthContext';
 import { getSafeDownloadFilename, downloadFile } from '../utils/fileDownload';
+import { processSyllabusFile, MAX_SYLLABUS_FILE_BYTES } from '../utils/fileCompressor';
 
 interface SyllabusPageProps {
   syllabuses: Syllabus[];
@@ -65,6 +68,11 @@ export const SyllabusPage: React.FC<SyllabusPageProps> = ({
   const [formPdfName, setFormPdfName] = useState<string>('');
   const [formPdfSize, setFormPdfSize] = useState<string>('');
   const [formSuccessMessage, setFormSuccessMessage] = useState<string>('');
+  const [isCompressing, setIsCompressing] = useState<boolean>(false);
+  const [compressionStatus, setCompressionStatus] = useState<{
+    type: 'success' | 'info' | 'error';
+    message: string;
+  } | null>(null);
 
   const admissionBatches = ['All', '2025–26', '2024–25', '2023–24', '2026–27'];
   const courses: ('All' | 'UG NEP' | 'UG AEDP' | 'PG')[] = ['All', 'UG NEP', 'UG AEDP', 'PG'];
@@ -219,30 +227,54 @@ export const SyllabusPage: React.FC<SyllabusPageProps> = ({
     return counts;
   }, [syllabuses, selectedBatch, selectedCourse, isAdmin]);
 
-  // Handle PDF file selection
-  const handlePdfFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  // Handle PDF file selection with 500 KB limit and auto-compression
+  const handlePdfFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    if (!file.name.toLowerCase().endsWith('.pdf') && file.type !== 'application/pdf') {
-      alert('Please select a valid PDF format document.');
-      return;
+    setCompressionStatus(null);
+    setIsCompressing(true);
+
+    try {
+      const result = await processSyllabusFile(file, MAX_SYLLABUS_FILE_BYTES);
+      if (result.success && result.dataUrl) {
+        setFormPdfData(result.dataUrl);
+        setFormPdfName(result.fileName);
+        setFormPdfSize(result.sizeStr);
+
+        if (result.wasCompressed) {
+          setCompressionStatus({
+            type: 'success',
+            message: `File auto-compressed from ${result.originalSizeStr} to ${result.sizeStr} (${result.compressionRatio || 0}% smaller) to fit strictly within the 500 KB limit!`,
+          });
+        } else {
+          setCompressionStatus({
+            type: 'info',
+            message: `File size: ${result.sizeStr} (Within 500 KB limit).`,
+          });
+        }
+      } else {
+        setFormPdfData('');
+        setFormPdfName('');
+        setFormPdfSize('');
+        setCompressionStatus({
+          type: 'error',
+          message:
+            result.errorMessage ||
+            `File exceeds the 500 KB limit (${result.originalSizeStr}). Please select a smaller document under 500 KB or provide a link in the "Provide Link in URL" tab.`,
+        });
+      }
+    } catch (err: any) {
+      setFormPdfData('');
+      setFormPdfName('');
+      setFormPdfSize('');
+      setCompressionStatus({
+        type: 'error',
+        message: `Error processing file: ${err?.message || 'Processing failed'}. Please try again.`,
+      });
+    } finally {
+      setIsCompressing(false);
     }
-
-    const sizeStr =
-      file.size > 1024 * 1024
-        ? `${(file.size / (1024 * 1024)).toFixed(1)} MB`
-        : `${Math.round(file.size / 1024)} KB`;
-
-    setFormPdfName(file.name);
-    setFormPdfSize(sizeStr);
-
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      const dataUrl = event.target?.result as string;
-      setFormPdfData(dataUrl);
-    };
-    reader.readAsDataURL(file);
   };
 
   // Handle Box Form Submit (No semester, No paper code, No subject/paper title)
@@ -252,6 +284,11 @@ export const SyllabusPage: React.FC<SyllabusPageProps> = ({
 
     if (!isAdmin) {
       alert('Only administrators are authorized to add or upload syllabus documents.');
+      return;
+    }
+
+    if (isCompressing) {
+      alert('Please wait while the syllabus document is being compressed to fit the 500 KB limit.');
       return;
     }
 
@@ -555,27 +592,66 @@ export const SyllabusPage: React.FC<SyllabusPageProps> = ({
                       </div>
                     ) : (
                       <div className="p-4 bg-amber-50/50 rounded-xl border border-amber-200 space-y-3">
-                        <label className="block font-bold text-amber-950 text-xs">
-                          Upload Syllabus PDF File *
-                        </label>
+                        <div className="flex flex-wrap items-center justify-between gap-1">
+                          <label className="block font-bold text-amber-950 text-xs">
+                            Upload Syllabus PDF File *
+                          </label>
+                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-200/80 text-amber-900 border border-amber-400/60 shadow-2xs">
+                            Max Limit: 500 KB • Auto-Compress
+                          </span>
+                        </div>
+
                         <input
                           type="file"
-                          accept=".pdf,application/pdf"
+                          accept=".pdf,application/pdf,image/*"
+                          disabled={isCompressing}
                           required={uploadTab === 'pdf' && !formPdfData}
                           onChange={handlePdfFileChange}
-                          className="w-full p-2 bg-white rounded-lg border border-amber-300 text-xs file:mr-3 file:py-1.5 file:px-3 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-blue-900 file:text-white hover:file:bg-blue-800 cursor-pointer"
+                          className="w-full p-2 bg-white rounded-lg border border-amber-300 text-xs file:mr-3 file:py-1.5 file:px-3 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-blue-900 file:text-white hover:file:bg-blue-800 cursor-pointer disabled:opacity-50"
                         />
-                        {formPdfName && (
-                          <div className="flex items-center justify-between text-xs text-emerald-800 bg-white border border-emerald-300 p-2.5 rounded-lg font-semibold">
-                            <span className="flex items-center gap-1.5">
-                              <FileCheck className="w-4 h-4 text-emerald-600" />
-                              <span>{formPdfName}</span>
-                            </span>
-                            <span className="font-mono text-[11px] text-slate-500">{formPdfSize}</span>
+
+                        {/* Compressing Spinner Banner */}
+                        {isCompressing && (
+                          <div className="flex items-center gap-2 p-3 bg-blue-50 border border-blue-200 text-blue-900 rounded-lg text-xs font-semibold animate-pulse">
+                            <Loader2 className="w-4 h-4 animate-spin text-blue-700 shrink-0" />
+                            <span>Checking &amp; compressing document to meet the 500 KB limit...</span>
                           </div>
                         )}
-                        <p className="text-[11px] text-amber-800/80">
-                          Upload directly as a .pdf file format for instant online viewing and offline download.
+
+                        {/* Compression Status Alert */}
+                        {compressionStatus && !isCompressing && (
+                          <div
+                            className={`p-3 rounded-lg text-xs flex items-start gap-2 border font-medium ${
+                              compressionStatus.type === 'success'
+                                ? 'bg-emerald-50 border-emerald-200 text-emerald-900'
+                                : compressionStatus.type === 'info'
+                                ? 'bg-blue-50 border-blue-200 text-blue-900'
+                                : 'bg-rose-50 border-rose-200 text-rose-900'
+                            }`}
+                          >
+                            {compressionStatus.type === 'error' ? (
+                              <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
+                            ) : (
+                              <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                            )}
+                            <div className="leading-relaxed">{compressionStatus.message}</div>
+                          </div>
+                        )}
+
+                        {formPdfName && !isCompressing && (
+                          <div className="flex items-center justify-between text-xs text-emerald-800 bg-white border border-emerald-300 p-2.5 rounded-lg font-semibold">
+                            <span className="flex items-center gap-1.5 truncate">
+                              <FileCheck className="w-4 h-4 text-emerald-600 shrink-0" />
+                              <span className="truncate">{formPdfName}</span>
+                            </span>
+                            <span className="font-mono text-[11px] text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded ml-2 shrink-0">
+                              {formPdfSize}
+                            </span>
+                          </div>
+                        )}
+
+                        <p className="text-[11px] text-amber-900/80 leading-relaxed">
+                          <strong>500 KB Limit Rule:</strong> Files larger than 500 KB are automatically compressed in-browser to strictly adhere to the 500 KB maximum limit. If a file is too large to compress under 500 KB, use the <strong>Provide Link in URL</strong> tab.
                         </p>
                       </div>
                     )}
@@ -585,16 +661,27 @@ export const SyllabusPage: React.FC<SyllabusPageProps> = ({
                     <button
                       type="button"
                       onClick={() => setShowUploadBox(false)}
-                      className="px-4 py-2 border border-slate-300 rounded-lg text-slate-700 hover:bg-slate-100 cursor-pointer"
+                      disabled={isCompressing}
+                      className="px-4 py-2 border border-slate-300 rounded-lg text-slate-700 hover:bg-slate-100 cursor-pointer disabled:opacity-50"
                     >
                       Cancel
                     </button>
                     <button
                       type="submit"
-                      className="px-5 py-2 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold rounded-lg cursor-pointer transition shadow-xs flex items-center gap-1.5"
+                      disabled={isCompressing || (uploadTab === 'pdf' && !formPdfData)}
+                      className="px-5 py-2 bg-amber-500 hover:bg-amber-400 disabled:opacity-50 text-slate-950 font-bold rounded-lg cursor-pointer transition shadow-xs flex items-center gap-1.5"
                     >
-                      <Sparkles className="w-3.5 h-3.5" />
-                      <span>Save Course Syllabus</span>
+                      {isCompressing ? (
+                        <>
+                          <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                          <span>Compressing...</span>
+                        </>
+                      ) : (
+                        <>
+                          <Sparkles className="w-3.5 h-3.5" />
+                          <span>Save Course Syllabus</span>
+                        </>
+                      )}
                     </button>
                   </div>
                 </form>
