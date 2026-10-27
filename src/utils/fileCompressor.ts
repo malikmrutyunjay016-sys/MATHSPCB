@@ -329,8 +329,8 @@ export interface ProcessSyllabusResult {
 }
 
 /**
- * Main processor for Menu -> Syllabus file upload
- * Strictly enforces the 500 KB limit, compressing the file if needed.
+ * Main processor for file uploads (Syllabus, Notices, PYQs)
+ * Targets targetMaxBytes (e.g. 350 KB or 500 KB), but allows upload up to 750 KB if compression cannot reach the target.
  */
 export async function processSyllabusFile(
   file: File,
@@ -338,6 +338,7 @@ export async function processSyllabusFile(
 ): Promise<ProcessSyllabusResult> {
   const originalSizeBytes = file.size;
   const originalSizeStr = formatBytes(originalSizeBytes);
+  const ABSOLUTE_MAX_BYTES = 750 * 1024; // 750 KB absolute fallback limit
 
   const isPdf =
     file.name.toLowerCase().endsWith('.pdf') || file.type === 'application/pdf';
@@ -354,11 +355,11 @@ export async function processSyllabusFile(
       originalSizeBytes,
       originalSizeStr,
       wasCompressed: false,
-      errorMessage: 'Please upload a PDF document format (.pdf) or syllabus document image.',
+      errorMessage: 'Please upload a PDF document format (.pdf) or image file.',
     };
   }
 
-  // 1. If file is already <= 500 KB, no compression is needed!
+  // 1. If file is already <= targetMaxBytes, no compression needed!
   if (originalSizeBytes <= targetMaxBytes) {
     const dataUrl = await readFileAsDataUrl(file);
     return {
@@ -373,7 +374,12 @@ export async function processSyllabusFile(
     };
   }
 
-  // 2. File exceeds 500 KB: Compress the file!
+  // 2. If file is <= 750 KB and compression is not strictly required or if compression fails, we can allow up to 750 KB
+  if (originalSizeBytes <= ABSOLUTE_MAX_BYTES) {
+    // Try compressing anyway to optimize size if possible, but allow up to 750 KB
+  }
+
+  // 3. File exceeds targetMaxBytes: Compress the file!
   try {
     let result: { dataUrl: string; sizeBytes: number; wasCompressed: boolean };
 
@@ -389,8 +395,8 @@ export async function processSyllabusFile(
       Math.round(((originalSizeBytes - result.sizeBytes) / originalSizeBytes) * 100)
     );
 
-    // Check if the compressed file fits within 500 KB
-    if (result.sizeBytes <= targetMaxBytes) {
+    // Check if the compressed file fits within targetMaxBytes OR within 750 KB fallback limit
+    if (result.sizeBytes <= targetMaxBytes || result.sizeBytes <= ABSOLUTE_MAX_BYTES) {
       return {
         success: true,
         dataUrl: result.dataUrl,
@@ -403,7 +409,7 @@ export async function processSyllabusFile(
         compressionRatio: percentageSaved,
       };
     } else {
-      // Even after compression, file is larger than 500 KB
+      // Even after compression, file is larger than 750 KB
       return {
         success: false,
         dataUrl: result.dataUrl,
@@ -414,10 +420,25 @@ export async function processSyllabusFile(
         originalSizeStr,
         wasCompressed: true,
         compressionRatio: percentageSaved,
-        errorMessage: `File exceeds the 500 KB upload limit. Original: ${originalSizeStr}. After compression: ${compressedSizeStr}. Please select a smaller PDF under 500 KB or provide a link in the "Provide Link in URL" tab.`,
+        errorMessage: `File exceeds the 750 KB maximum upload limit. Original: ${originalSizeStr}. After compression: ${compressedSizeStr}. Please select a smaller file under 750 KB or provide a URL link.`,
       };
     }
   } catch (err: any) {
+    // If compression failed, but original file is <= 750 KB, allow it!
+    if (originalSizeBytes <= ABSOLUTE_MAX_BYTES) {
+      const dataUrl = await readFileAsDataUrl(file);
+      return {
+        success: true,
+        dataUrl,
+        fileName: file.name,
+        sizeBytes: originalSizeBytes,
+        sizeStr: originalSizeStr,
+        originalSizeBytes,
+        originalSizeStr,
+        wasCompressed: false,
+      };
+    }
+
     return {
       success: false,
       fileName: file.name,
@@ -426,7 +447,7 @@ export async function processSyllabusFile(
       originalSizeBytes,
       originalSizeStr,
       wasCompressed: false,
-      errorMessage: `Could not compress file: ${err?.message || 'Compression error'}. Please choose a file under 500 KB or provide a syllabus URL link.`,
+      errorMessage: `Could not compress file: ${err?.message || 'Compression error'}. File exceeds 750 KB limit.`,
     };
   }
 }

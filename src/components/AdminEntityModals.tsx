@@ -903,8 +903,8 @@ export const NoticeModal: React.FC<{
 
   if (!isOpen) return null;
 
-  // Handle Photo / PDF Upload with 350 KB limit & auto-compression for images
-  const handleNoticeFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  // Handle Photo / PDF Upload with 350 KB limit & auto-compression for both PDFs and photos
+  const handleNoticeFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
@@ -912,148 +912,30 @@ export const NoticeModal: React.FC<{
     setUploadError('');
     setIsProcessingFile(true);
 
-    const MAX_ALLOWED_BYTES = 350 * 1024; // 350 KB
-    const originalKb = Math.round(file.size / 1024);
+    try {
+      const res = await processSyllabusFile(file, 350 * 1024);
+      if (res.success && res.dataUrl) {
+        setForm((prev) => ({
+          ...prev,
+          attachmentUrl: res.dataUrl!,
+          attachmentName: res.fileName,
+        }));
 
-    // If it's an image/photo (jpg, jpeg, png, webp, gif)
-    if (file.type.startsWith('image/')) {
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        const img = new Image();
-        img.onload = () => {
-          const canvas = document.createElement('canvas');
-          let width = img.width;
-          let height = img.height;
-          let quality = 0.88;
-
-          // Dimension scaling if photo is huge
-          const maxDim = 1500;
-          if (width > maxDim || height > maxDim) {
-            if (width > height) {
-              height = Math.round((height * maxDim) / width);
-              width = maxDim;
-            } else {
-              width = Math.round((width * maxDim) / height);
-              height = maxDim;
-            }
-          }
-
-          canvas.width = width;
-          canvas.height = height;
-          const ctx = canvas.getContext('2d');
-          // If already within 350 KB limit, preserve original image data and format untouched
-          if (originalKb <= 350) {
-            setForm((prev) => ({
-              ...prev,
-              attachmentUrl: event.target?.result as string,
-              attachmentName: file.name,
-            }));
-            setUploadStatus(`✓ Photo attached in original format (${file.name}): ${originalKb} KB.`);
-            setIsProcessingFile(false);
-            return;
-          }
-
-          const outputMime = file.type === 'image/webp' ? 'image/webp' : 'image/jpeg';
-          if (!ctx) {
-            setUploadError('Failed to initialize canvas for image compression.');
-            setIsProcessingFile(false);
-            return;
-          }
-          ctx.drawImage(img, 0, 0, width, height);
-          let dataUrl = canvas.toDataURL(outputMime, quality);
-          let byteSize = Math.round((dataUrl.length * 3) / 4);
-
-          // Compress down iteratively until <= 350 KB
-          while (byteSize > MAX_ALLOWED_BYTES && quality > 0.15) {
-            quality -= 0.12;
-            dataUrl = canvas.toDataURL('image/jpeg', quality);
-            byteSize = Math.round((dataUrl.length * 3) / 4);
-          }
-
-          // If still slightly over, scale down dimensions
-          if (byteSize > MAX_ALLOWED_BYTES) {
-            let scale = 0.8;
-            while (byteSize > MAX_ALLOWED_BYTES && scale > 0.25) {
-              const scaledCanvas = document.createElement('canvas');
-              scaledCanvas.width = Math.max(200, Math.round(width * scale));
-              scaledCanvas.height = Math.max(200, Math.round(height * scale));
-              const sCtx = scaledCanvas.getContext('2d');
-              if (sCtx) {
-                sCtx.drawImage(canvas, 0, 0, scaledCanvas.width, scaledCanvas.height);
-                dataUrl = scaledCanvas.toDataURL('image/jpeg', 0.65);
-                byteSize = Math.round((dataUrl.length * 3) / 4);
-              }
-              scale -= 0.15;
-            }
-          }
-
-          const finalKb = Math.round(byteSize / 1024);
-          setForm((prev) => ({
-            ...prev,
-            attachmentUrl: dataUrl,
-            attachmentName: file.name || `Notice_Photo_${Date.now()}.jpg`,
-          }));
-
-          if (originalKb > 350) {
-            setUploadStatus(
-              `⚡ Compressed photo from ${originalKb} KB to ${finalKb} KB (within 350 KB limit).`
-            );
-          } else {
-            setUploadStatus(`✓ Photo attached successfully: ${finalKb} KB (within 350 KB limit).`);
-          }
-          setIsProcessingFile(false);
-        };
-
-        img.onerror = () => {
-          setUploadError('Could not process image file. Please try another JPG/PNG photo.');
-          setIsProcessingFile(false);
-        };
-        img.src = event.target?.result as string;
-      };
-
-      reader.onerror = () => {
-        setUploadError('Could not read file from disk.');
-        setIsProcessingFile(false);
-      };
-      reader.readAsDataURL(file);
-      return;
-    }
-
-    // If it's a PDF file
-    if (file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf')) {
-      if (file.size > MAX_ALLOWED_BYTES) {
-        setUploadError(
-          `Selected PDF is ${originalKb} KB, which exceeds the maximum limit of 350 KB. Please select a compressed PDF (≤ 350 KB) or upload as a photo/scan (JPG/PNG), which is automatically compressed.`
-        );
-        setIsProcessingFile(false);
-        return;
-      }
-
-      const reader = new FileReader();
-      reader.onload = () => {
-        if (typeof reader.result === 'string') {
-          setForm((prev) => ({
-            ...prev,
-            attachmentUrl: reader.result as string,
-            attachmentName: file.name || `Notice_Document_${Date.now()}.pdf`,
-          }));
-          setUploadStatus(`✓ PDF document attached: ${originalKb} KB (within 350 KB limit).`);
-          setIsProcessingFile(false);
+        if (res.wasCompressed) {
+          setUploadStatus(
+            `⚡ Compressed ${res.fileName} from ${res.originalSizeStr} to ${res.sizeStr} (${res.compressionRatio || 0}% saved, under 350 KB limit).`
+          );
+        } else {
+          setUploadStatus(`✓ File attached: ${res.sizeStr} (within 350 KB limit).`);
         }
-      };
-      reader.onerror = () => {
-        setUploadError('Could not read PDF file.');
-        setIsProcessingFile(false);
-      };
-      reader.readAsDataURL(file);
-      return;
+      } else {
+        setUploadError(res.errorMessage || 'Failed to process file under 350 KB limit.');
+      }
+    } catch (err: any) {
+      setUploadError(`Error processing file: ${err?.message || 'Unknown error'}`);
+    } finally {
+      setIsProcessingFile(false);
     }
-
-    // Unsupported type
-    setUploadError(
-      `Unsupported format (${file.type || 'unknown'}). Supported formats: PDF, JPG, JPEG, PNG, WEBP.`
-    );
-    setIsProcessingFile(false);
   };
 
   const isCurrentAttachmentImage =
