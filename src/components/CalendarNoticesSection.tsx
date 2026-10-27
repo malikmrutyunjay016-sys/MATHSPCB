@@ -65,9 +65,24 @@ export const CalendarNoticesSection: React.FC<CalendarNoticesSectionProps> = ({
   onSaveNotice,
   faculty = [],
 }) => {
-  // Current date navigation (supports any month/year across previous, current, next)
-  const [currentDate, setCurrentDate] = useState<Date>(() => new Date(2026, 9, 1)); // Default to Oct 2026
-  const [selectedDay, setSelectedDay] = useState<number>(16);
+  // Current date computation
+  const now = new Date();
+  const today = now;
+  const todayFullDateFormatted = today.toLocaleDateString('en-IN', {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+  });
+  const todayFormatted = today.toLocaleDateString('en-IN', {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+  });
+
+  // Current date navigation (defaults to today's active month)
+  const [currentDate, setCurrentDate] = useState<Date>(() => new Date(now.getFullYear(), now.getMonth(), 1));
+  const [selectedDay, setSelectedDay] = useState<number>(now.getDate());
 
   const year = currentDate.getFullYear();
   const month = currentDate.getMonth(); // 0-11
@@ -448,10 +463,23 @@ export const CalendarNoticesSection: React.FC<CalendarNoticesSectionProps> = ({
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 -ml-2.5"></span>
                 LIVE FOR ALL
               </span>
+
+              {/* Current Date Display Badge */}
+              <div className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full bg-blue-500/20 text-blue-200 border border-blue-400/40 text-[11px] font-bold normal-case tracking-normal shadow-xs">
+                <CalendarIcon className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                <span>Current Date: <strong className="text-white font-extrabold">{todayFullDateFormatted}</strong></span>
+              </div>
             </div>
-            <h2 className="font-serif-academic text-3xl sm:text-4xl font-extrabold text-white mt-1">
-              {activeMonthName}
-            </h2>
+
+            <div className="flex flex-wrap items-baseline gap-3 mt-1.5">
+              <h2 className="font-serif-academic text-3xl sm:text-4xl font-extrabold text-white">
+                {activeMonthName}
+              </h2>
+              <span className="text-slate-300 text-xs font-medium bg-slate-900/90 px-3 py-1 rounded-lg border border-slate-700 flex items-center gap-2 shadow-xs">
+                <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse"></span>
+                <span>Today: <strong className="text-amber-300 font-bold">{todayFullDateFormatted}</strong></span>
+              </span>
+            </div>
           </div>
 
           <div className="flex flex-wrap items-center gap-2.5">
@@ -492,6 +520,17 @@ export const CalendarNoticesSection: React.FC<CalendarNoticesSectionProps> = ({
             )}
 
             <div className="flex items-center gap-2">
+              <button
+                onClick={() => {
+                  setCurrentDate(new Date(today.getFullYear(), today.getMonth(), 1));
+                  setSelectedDay(today.getDate());
+                }}
+                className="px-3 py-2 rounded-full border border-amber-500/50 bg-amber-500/15 hover:bg-amber-500/25 text-amber-300 font-bold text-xs flex items-center gap-1.5 transition cursor-pointer shadow-xs"
+                title={`Jump to Today's Date (${todayFormatted})`}
+              >
+                <CalendarIcon className="w-3.5 h-3.5 text-amber-400" />
+                <span>Today ({today.getDate()} {monthNames[today.getMonth()].slice(0, 3)})</span>
+              </button>
               <button
                 onClick={handlePrevMonth}
                 className="w-10 h-10 rounded-full border border-slate-700 hover:border-slate-500 bg-slate-900/60 flex items-center justify-center text-slate-300 hover:text-white transition cursor-pointer"
@@ -552,6 +591,10 @@ export const CalendarNoticesSection: React.FC<CalendarNoticesSectionProps> = ({
                   const eventsList = getEventsForDay(day);
                   const hasEvents = eventsList.length > 0;
                   const isSelected = selectedDay === day;
+                  const isToday =
+                    day === today.getDate() &&
+                    month === today.getMonth() &&
+                    year === today.getFullYear();
                   const facultyLeavesToday = isAdmin ? eventsList.filter((e) => e.source === 'faculty-leave' && e.facultyName) : [];
                   const hasFacultyLeave = facultyLeavesToday.length > 0;
 
@@ -588,6 +631,10 @@ export const CalendarNoticesSection: React.FC<CalendarNoticesSectionProps> = ({
                     buttonClassName = 'text-slate-400 hover:bg-slate-800/50 hover:text-slate-200';
                   }
 
+                  if (isToday && !isSelected) {
+                    buttonClassName += ' ring-2 ring-amber-400/90 font-bold';
+                  }
+
                   return (
                     <button
                       key={day}
@@ -595,7 +642,12 @@ export const CalendarNoticesSection: React.FC<CalendarNoticesSectionProps> = ({
                       style={buttonStyle}
                       className={`relative py-2.5 text-xs sm:text-sm rounded-lg transition cursor-pointer flex flex-col items-center justify-center ${buttonClassName}`}
                     >
-                      <span>{day}</span>
+                      <div className="flex items-center gap-0.5">
+                        <span>{day}</span>
+                        {isToday && !isSelected && (
+                          <span className="w-1.5 h-1.5 rounded-full bg-amber-400" title="Today"></span>
+                        )}
+                      </div>
                       {holiday && !isSelected && !hasFacultyLeave && (
                         <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 absolute bottom-1"></span>
                       )}
@@ -620,9 +672,16 @@ export const CalendarNoticesSection: React.FC<CalendarNoticesSectionProps> = ({
             {/* Selected Date Indicator Banner */}
             <div className="rounded-lg p-3.5 text-xs border bg-slate-900/80 border-slate-700">
               <div className="flex items-center justify-between mb-1">
-                <span className="font-bold uppercase tracking-wider text-[10px] text-amber-400">
-                  {monthNames[month]} {selectedDay}, {year}
-                </span>
+                <div className="flex items-center gap-2">
+                  <span className="font-bold uppercase tracking-wider text-[10px] text-amber-400">
+                    {monthNames[month]} {selectedDay}, {year}
+                  </span>
+                  {selectedDay === today.getDate() && month === today.getMonth() && year === today.getFullYear() && (
+                    <span className="px-2 py-0.5 rounded-full bg-amber-500 text-slate-950 font-extrabold text-[9px] uppercase tracking-wider shadow-2xs">
+                      Today
+                    </span>
+                  )}
+                </div>
                 {isHoliday(selectedDay) && (
                   <span className="px-2 py-0.5 rounded bg-emerald-900 text-emerald-300 font-bold text-[10px]">
                     Holiday
@@ -684,15 +743,30 @@ export const CalendarNoticesSection: React.FC<CalendarNoticesSectionProps> = ({
                   LIVE FEED
                 </span>
               </div>
-              {isAdmin && (
-                <span className="text-[11px] text-amber-400 font-semibold bg-amber-500/10 px-2 py-1 rounded border border-amber-500/20">
-                  Admin Mode: Faculty leaves visible to admin only
+              <div className="flex items-center gap-2">
+                <span className="text-[11px] text-slate-300 bg-slate-900/80 px-2.5 py-1 rounded border border-slate-700 flex items-center gap-1.5 font-medium">
+                  <CalendarIcon className="w-3.5 h-3.5 text-amber-400" />
+                  <span>Today: <strong className="text-white font-semibold">{todayFormatted}</strong></span>
                 </span>
-              )}
+                {isAdmin && (
+                  <span className="text-[11px] text-amber-400 font-semibold bg-amber-500/10 px-2 py-1 rounded border border-amber-500/20">
+                    Admin Mode
+                  </span>
+                )}
+              </div>
             </div>
 
-            <div className="space-y-3">
-              {notices.slice(0, 5).map((notice) => (
+            {notices.length === 0 ? (
+              <div className="rounded-xl p-8 bg-[#0b1a2f]/60 border border-slate-800 text-center space-y-2">
+                <FileText className="w-8 h-8 text-slate-500 mx-auto" />
+                <p className="text-sm font-semibold text-slate-300">No New Circulars Today</p>
+                <p className="text-xs text-slate-500 max-w-sm mx-auto">
+                  New official notices and department announcements published by the administration will appear here.
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {notices.slice(0, 5).map((notice) => (
                 <div
                   key={notice.id}
                   className={`group rounded-xl p-4 transition-all duration-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3 border ${
@@ -785,6 +859,7 @@ export const CalendarNoticesSection: React.FC<CalendarNoticesSectionProps> = ({
                 </div>
               ))}
             </div>
+          )}
 
             {/* Bottom Right: Button to Notice Board Archive */}
             <div className="flex justify-end pt-2">

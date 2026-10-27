@@ -156,7 +156,19 @@ function AppContent() {
   const [facilities, setFacilities] = useState<Facility[]>(initialFacilities);
   const [books, setBooks] = useState<Book[]>(initialBooks);
   const [pyq, setPYQ] = useState<QuestionPaper[]>(initialQuestionPapers);
-  const [notices, setNotices] = useState<Notice[]>(initialNotices);
+  const [notices, setNotices] = useState<Notice[]>(() => {
+    try {
+      const saved = localStorage.getItem('dept_notices');
+      if (saved) {
+        const parsed: Notice[] = JSON.parse(saved);
+        const dummyIds = new Set(['not-1', 'not-2', 'not-3', 'not-4', 'not-5', 'not-6']);
+        return parsed.filter((n) => !dummyIds.has(n.id));
+      }
+      return [];
+    } catch {
+      return [];
+    }
+  });
   const [committees, setCommittees] = useState<Committee[]>(initialCommittees);
   const [contacts, setContacts] = useState<ImportantContact[]>(initialContacts);
   const [timeTable, setTimeTable] = useState<TimeTableSlot[]>(initialTimeTable);
@@ -338,8 +350,26 @@ function AppContent() {
       () => setPYQ(initialQuestionPapers)
     );
     const unsubNotices = subscribeToNotices(
-      (data) => setNotices(data),
-      () => setNotices(initialNotices)
+      (data) => {
+        setNotices(data);
+        try {
+          localStorage.setItem('dept_notices', JSON.stringify(data));
+        } catch {}
+      },
+      () => {
+        try {
+          const saved = localStorage.getItem('dept_notices');
+          if (saved) {
+            const parsed: Notice[] = JSON.parse(saved);
+            const dummyIds = new Set(['not-1', 'not-2', 'not-3', 'not-4', 'not-5', 'not-6']);
+            setNotices(parsed.filter((n) => !dummyIds.has(n.id)));
+          } else {
+            setNotices([]);
+          }
+        } catch {
+          setNotices([]);
+        }
+      }
     );
     const unsubCommittees = subscribeToCommittees(
       (data) => setCommittees(data),
@@ -571,7 +601,13 @@ function AppContent() {
       itemName: title,
       onConfirm: async () => {
         // Optimistic instant UI update
-        setNotices((prev) => prev.filter((n) => n.id !== id));
+        setNotices((prev) => {
+          const next = prev.filter((n) => n.id !== id);
+          try {
+            localStorage.setItem('dept_notices', JSON.stringify(next));
+          } catch {}
+          return next;
+        });
         setDeleteModal((prev) => ({ ...prev, isOpen: false }));
         deleteNotice(id).catch((err) => console.warn('deleteNotice error:', err));
       },
@@ -836,19 +872,24 @@ function AppContent() {
   const handleToggleNoticeArchive = async (notice: Notice) => {
     const updated = { ...notice, isArchived: !notice.isArchived };
     await saveNotice(updated);
-    setNotices((prev) => prev.map((n) => (n.id === notice.id ? updated : n)));
+    setNotices((prev) => {
+      const next = prev.map((n) => (n.id === notice.id ? updated : n));
+      try {
+        localStorage.setItem('dept_notices', JSON.stringify(next));
+      } catch {}
+      return next;
+    });
   };
 
   const handleSaveNotice = async (notice: Notice) => {
     await saveNotice(notice);
     setNotices((prev) => {
       const idx = prev.findIndex((n) => n.id === notice.id);
-      if (idx >= 0) {
-        const copy = [...prev];
-        copy[idx] = notice;
-        return copy;
-      }
-      return [notice, ...prev];
+      const next = idx >= 0 ? prev.map((n) => (n.id === notice.id ? notice : n)) : [notice, ...prev];
+      try {
+        localStorage.setItem('dept_notices', JSON.stringify(next));
+      } catch {}
+      return next;
     });
   };
 

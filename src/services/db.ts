@@ -106,10 +106,7 @@ export async function seedInitialDatabase() {
       await setDoc(doc(db, 'question_papers', item.id), item, { merge: true });
     }
 
-    // Seed Notices
-    for (const item of initialNotices) {
-      await setDoc(doc(db, 'notices', item.id), item, { merge: true });
-    }
+    // Notices start empty: only new updates and published circulars will be counted
 
     // Seed Committees
     for (const item of initialCommittees) {
@@ -820,26 +817,34 @@ export function subscribeToNotices(
       q,
       async (snapshot) => {
         if (snapshot.empty) {
-          if (isDatabaseSeededSync()) {
-            callback([]);
-            return;
-          }
-          const seeded = await checkIsSeeded();
-          if (seeded) {
-            callback([]);
-            return;
-          }
-          callback(initialNotices);
-          ensureDatabaseSeeded();
+          try {
+            localStorage.setItem('dept_notices', JSON.stringify([]));
+          } catch {}
+          callback([]);
           return;
         }
-        const data = snapshot.docs.map((d) => ({ id: d.id, ...d.data() } as Notice));
+        const dummyIds = new Set(['not-1', 'not-2', 'not-3', 'not-4', 'not-5', 'not-6']);
+        const data = snapshot.docs
+          .map((d) => ({ id: d.id, ...d.data() } as Notice))
+          .filter((n) => !dummyIds.has(n.id));
         data.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+        try {
+          localStorage.setItem('dept_notices', JSON.stringify(data));
+        } catch {}
         callback(data);
       },
       (error) => {
         console.warn('Notices snapshot fallback:', error);
-        fallback();
+        try {
+          const saved = localStorage.getItem('dept_notices');
+          if (saved) {
+            const parsed: Notice[] = JSON.parse(saved);
+            const dummyIds = new Set(['not-1', 'not-2', 'not-3', 'not-4', 'not-5', 'not-6']);
+            callback(parsed.filter((n) => !dummyIds.has(n.id)));
+            return;
+          }
+        } catch {}
+        callback([]);
       }
     );
   } catch (error) {

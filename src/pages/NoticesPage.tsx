@@ -179,8 +179,16 @@ export const NoticesPage: React.FC<NoticesPageProps> = ({
 
         {/* Notices in Boxes Display */}
         {filteredNotices.length === 0 ? (
-          <div className="bg-white rounded-2xl p-12 text-center text-slate-400 text-xs border border-slate-200">
-            No notices match the selected category.
+          <div className="bg-white rounded-2xl p-12 text-center text-slate-500 text-xs border border-slate-200 space-y-3">
+            <div className="w-12 h-12 mx-auto rounded-full bg-slate-100 flex items-center justify-center text-slate-400">
+              <Bell className="w-6 h-6" />
+            </div>
+            <p className="font-bold text-slate-700 text-sm">No Notices Published Yet</p>
+            <p className="text-slate-500 max-w-sm mx-auto text-xs">
+              {searchTerm || selectedCategory !== 'All'
+                ? 'No notices match the selected category or search filters.'
+                : 'All new department notices, examination circulars, and announcements published by the department administrator will appear here.'}
+            </p>
           </div>
         ) : (
           <div
