@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   PhoneCall,
   Mail,
@@ -10,6 +10,8 @@ import {
   Phone,
   ShieldAlert,
   Building,
+  ArrowUp,
+  ArrowDown,
 } from 'lucide-react';
 import { ImportantContact } from '../types';
 import { useAuth } from '../context/AuthContext';
@@ -19,6 +21,7 @@ interface ImportantContactsPageProps {
   onAddContact: () => void;
   onEditContact: (contact: ImportantContact) => void;
   onDeleteContact: (id: string, name: string) => void;
+  onReorderContact?: (updatedList: ImportantContact[]) => void;
 }
 
 export const ImportantContactsPage: React.FC<ImportantContactsPageProps> = ({
@@ -26,16 +29,50 @@ export const ImportantContactsPage: React.FC<ImportantContactsPageProps> = ({
   onAddContact,
   onEditContact,
   onDeleteContact,
+  onReorderContact,
 }) => {
   const { isAdmin } = useAuth();
   const [searchTerm, setSearchTerm] = useState('');
 
-  const filteredContacts = contacts.filter(
-    (c) =>
-      c.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      c.designation.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      c.office.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  // Strictly sort contacts by order number
+  const sortedContacts = useMemo(() => {
+    return [...contacts].sort((a, b) => {
+      const orderA = typeof a.order === 'number' ? a.order : 999;
+      const orderB = typeof b.order === 'number' ? b.order : 999;
+      if (orderA !== orderB) return orderA - orderB;
+      return (a.name || '').localeCompare(b.name || '');
+    });
+  }, [contacts]);
+
+  const filteredContacts = useMemo(() => {
+    return sortedContacts.filter(
+      (c) =>
+        c.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        c.designation.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        c.office.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+  }, [sortedContacts, searchTerm]);
+
+  const handleMoveOrder = (contact: ImportantContact, direction: 'up' | 'down') => {
+    const currentIndex = sortedContacts.findIndex((c) => c.id === contact.id);
+    if (currentIndex < 0) return;
+    const targetIndex = direction === 'up' ? currentIndex - 1 : currentIndex + 1;
+    if (targetIndex < 0 || targetIndex >= sortedContacts.length) return;
+
+    const newList = [...sortedContacts];
+    const temp = newList[currentIndex];
+    newList[currentIndex] = newList[targetIndex];
+    newList[targetIndex] = temp;
+
+    const updatedList = newList.map((item, idx) => ({
+      ...item,
+      order: idx + 1,
+    }));
+
+    if (onReorderContact) {
+      onReorderContact(updatedList);
+    }
+  };
 
   return (
     <div className="bg-slate-50 min-h-screen py-10">
@@ -85,86 +122,117 @@ export const ImportantContactsPage: React.FC<ImportantContactsPageProps> = ({
 
         {/* Contacts Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredContacts.map((contact) => (
-            <div
-              key={contact.id}
-              className="bg-white rounded-2xl border border-slate-200 hover:border-amber-300 shadow-2xs hover:shadow-lg transition-all duration-300 p-6 flex flex-col justify-between group"
-            >
-              <div className="space-y-4">
-                <div className="flex items-start justify-between gap-2">
-                  <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#0c2340] to-blue-800 text-amber-300 flex items-center justify-center font-bold text-xs shadow-xs">
-                    <Building className="w-5 h-5" />
+          {filteredContacts.map((contact) => {
+            const sortedIndex = sortedContacts.findIndex((c) => c.id === contact.id);
+            const isFirst = sortedIndex === 0;
+            const isLast = sortedIndex === sortedContacts.length - 1;
+
+            return (
+              <div
+                key={contact.id}
+                className="bg-white rounded-2xl border border-slate-200 hover:border-amber-300 shadow-2xs hover:shadow-lg transition-all duration-300 p-6 flex flex-col justify-between group"
+              >
+                <div className="space-y-4">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#0c2340] to-blue-800 text-amber-300 flex items-center justify-center font-bold text-xs shadow-xs">
+                      <Building className="w-5 h-5" />
+                    </div>
+                    <span className="text-[10px] font-mono font-bold text-slate-500 bg-slate-100 px-2 py-0.5 rounded border border-slate-200">
+                      Order #{contact.order || sortedIndex + 1}
+                    </span>
                   </div>
-                  <span className="text-[10px] font-mono font-bold text-slate-400">
-                    Order #{contact.order || 1}
-                  </span>
-                </div>
 
-                <div>
-                  <h3 className="font-serif-academic text-base sm:text-lg font-bold text-[#0c2340] group-hover:text-blue-900 transition leading-snug">
-                    {contact.name}
-                  </h3>
-                  <p className="text-xs font-semibold text-amber-800 mt-0.5">
-                    {contact.designation}
-                  </p>
-                  <p className="text-[11px] text-slate-500 flex items-center gap-1.5 mt-1">
-                    <MapPin className="w-3.5 h-3.5 text-rose-600 shrink-0" />
-                    <span>{contact.office}</span>
-                  </p>
-                </div>
-
-                {/* Direct Action Buttons (Call / Email) */}
-                <div className="pt-2 border-t border-slate-100 grid grid-cols-2 gap-2">
-                  <a
-                    href={`tel:${contact.phone}`}
-                    className="py-2 px-3 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-800 font-bold text-xs flex items-center justify-center gap-1.5 transition"
-                  >
-                    <Phone className="w-3.5 h-3.5" />
-                    <span>Call</span>
-                  </a>
-
-                  <a
-                    href={`mailto:${contact.email}`}
-                    className="py-2 px-3 rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-800 font-bold text-xs flex items-center justify-center gap-1.5 transition"
-                  >
-                    <Mail className="w-3.5 h-3.5" />
-                    <span>Email</span>
-                  </a>
-                </div>
-
-                <div className="space-y-1 text-xs text-slate-600 pt-1">
-                  <div className="text-[11px] font-mono text-slate-800 truncate">
-                    <strong>Tel:</strong> {contact.phone}
+                  <div>
+                    <h3 className="font-serif-academic text-base sm:text-lg font-bold text-[#0c2340] group-hover:text-blue-900 transition leading-snug">
+                      {contact.name}
+                    </h3>
+                    <p className="text-xs font-semibold text-amber-800 mt-0.5">
+                      {contact.designation}
+                    </p>
+                    <p className="text-[11px] text-slate-500 flex items-center gap-1.5 mt-1">
+                      <MapPin className="w-3.5 h-3.5 text-rose-600 shrink-0" />
+                      <span>{contact.office}</span>
+                    </p>
                   </div>
-                  <div className="text-[11px] text-slate-500 truncate">
-                    <strong>Email:</strong> {contact.email}
+
+                  {/* Direct Action Buttons (Call / Email) */}
+                  <div className="pt-2 border-t border-slate-100 grid grid-cols-2 gap-2">
+                    <a
+                      href={`tel:${contact.phone}`}
+                      className="py-2 px-3 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-800 font-bold text-xs flex items-center justify-center gap-1.5 transition"
+                    >
+                      <Phone className="w-3.5 h-3.5" />
+                      <span>Call</span>
+                    </a>
+
+                    <a
+                      href={`mailto:${contact.email}`}
+                      className="py-2 px-3 rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-800 font-bold text-xs flex items-center justify-center gap-1.5 transition"
+                    >
+                      <Mail className="w-3.5 h-3.5" />
+                      <span>Email</span>
+                    </a>
+                  </div>
+
+                  <div className="space-y-1 text-xs text-slate-600 pt-1">
+                    <div className="text-[11px] font-mono text-slate-800 truncate">
+                      <strong>Tel:</strong> {contact.phone}
+                    </div>
+                    <div className="text-[11px] text-slate-500 truncate">
+                      <strong>Email:</strong> {contact.email}
+                    </div>
                   </div>
                 </div>
+
+                {isAdmin && (
+                  <div className="pt-4 border-t border-slate-100 mt-4 flex items-center justify-between text-xs">
+                    {/* Move Up / Down Buttons */}
+                    <div className="flex items-center gap-1 bg-slate-100 p-0.5 rounded-lg border border-slate-200">
+                      <button
+                        type="button"
+                        onClick={() => handleMoveOrder(contact, 'up')}
+                        disabled={isFirst}
+                        className="p-1.5 rounded hover:bg-white text-slate-700 disabled:opacity-30 disabled:hover:bg-transparent transition cursor-pointer"
+                        title="Move Contact Up"
+                      >
+                        <ArrowUp className="w-3.5 h-3.5" />
+                      </button>
+                      <span className="text-[10px] font-mono font-bold text-slate-700 px-1">
+                        #{contact.order || sortedIndex + 1}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => handleMoveOrder(contact, 'down')}
+                        disabled={isLast}
+                        className="p-1.5 rounded hover:bg-white text-slate-700 disabled:opacity-30 disabled:hover:bg-transparent transition cursor-pointer"
+                        title="Move Contact Down"
+                      >
+                        <ArrowDown className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+
+                    {/* Edit & Delete Controls */}
+                    <div className="flex items-center gap-1.5">
+                      <button
+                        onClick={() => onEditContact(contact)}
+                        className="p-1.5 rounded-md hover:bg-slate-100 text-slate-600 cursor-pointer"
+                        title="Edit Contact Details"
+                      >
+                        <Edit2 className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={() => onDeleteContact(contact.id, contact.name)}
+                        className="p-1.5 rounded-md hover:bg-rose-100 text-rose-600 cursor-pointer"
+                        title="Delete Contact Entry"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
-
-              {isAdmin && (
-                <div className="pt-4 border-t border-slate-100 mt-4 flex items-center justify-between text-xs">
-                  <span className="text-[11px] text-slate-400">Admin Control</span>
-                  <div className="flex items-center gap-1.5">
-                    <button
-                      onClick={() => onEditContact(contact)}
-                      className="p-1.5 rounded-md hover:bg-slate-100 text-slate-600"
-                      title="Edit Contact"
-                    >
-                      <Edit2 className="w-4 h-4" />
-                    </button>
-                    <button
-                      onClick={() => onDeleteContact(contact.id, contact.name)}
-                      className="p-1.5 rounded-md hover:bg-rose-100 text-rose-600"
-                      title="Delete Contact"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                  </div>
-                </div>
-              )}
-            </div>
-          ))}
+            );
+          })}
         </div>
       </div>
     </div>

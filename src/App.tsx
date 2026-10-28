@@ -642,6 +642,13 @@ function AppContent() {
     });
   };
 
+  const handleReorderContact = async (updatedList: ImportantContact[]) => {
+    setContacts(updatedList);
+    for (const c of updatedList) {
+      await saveContact(c);
+    }
+  };
+
   const handleSaveDownload = async (item: DownloadItem) => {
     try {
       await saveDownloadItem(item);
@@ -1171,6 +1178,7 @@ function AppContent() {
             onAddContact={() => setContactModal({ isOpen: true, item: null })}
             onEditContact={(c) => setContactModal({ isOpen: true, item: c })}
             onDeleteContact={handleDeleteContact}
+            onReorderContact={handleReorderContact}
           />
         )}
 

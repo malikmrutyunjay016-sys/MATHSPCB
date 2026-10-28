@@ -1507,7 +1507,7 @@ export const ContactModal: React.FC<{
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-3 gap-3">
             <div>
               <label className="block font-bold text-slate-700 uppercase mb-1 text-[11px]">
                 Phone Number *
@@ -1530,6 +1530,19 @@ export const ContactModal: React.FC<{
                 value={form.email}
                 onChange={(e) => setForm({ ...form, email: e.target.value })}
                 className="w-full p-2.5 rounded-lg border border-slate-200 text-xs focus:outline-hidden"
+              />
+            </div>
+            <div>
+              <label className="block font-bold text-slate-700 uppercase mb-1 text-[11px]">
+                Display Order Position *
+              </label>
+              <input
+                type="number"
+                min="1"
+                required
+                value={form.order || 1}
+                onChange={(e) => setForm({ ...form, order: parseInt(e.target.value, 10) || 1 })}
+                className="w-full p-2.5 rounded-lg border border-slate-200 text-xs focus:outline-hidden font-mono font-bold"
               />
             </div>
           </div>
