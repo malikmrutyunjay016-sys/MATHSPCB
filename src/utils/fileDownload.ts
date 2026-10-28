@@ -157,6 +157,8 @@ export function dataUrlToBlob(dataUrl: string): Blob {
   }
 }
 
+import { isGoogleDriveUrl, downloadGoogleDriveFile } from './googleDrive';
+
 /**
  * Downloads a file or photo in its exact original uploaded format.
  */
@@ -171,7 +173,13 @@ export async function downloadFile(
 
   const filename = preferredFilename || 'Department_Download';
 
-  // 1. Convert Data URL to binary Blob URL for reliable native downloading
+  // 1. Google Drive URLs: trigger direct Google Drive export download stream
+  if (isGoogleDriveUrl(urlOrData)) {
+    downloadGoogleDriveFile(urlOrData, filename);
+    return;
+  }
+
+  // 2. Convert Data URL to binary Blob URL for reliable native downloading
   if (urlOrData.startsWith('data:')) {
     const blob = dataUrlToBlob(urlOrData);
     const blobUrl = URL.createObjectURL(blob);
