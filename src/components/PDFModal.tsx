@@ -1,6 +1,7 @@
-import React from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { X, Download, FileText, ExternalLink, Printer, CheckCircle, Image as ImageIcon } from 'lucide-react';
-import { detectFormatInfo, getSafeDownloadFilename, downloadFile } from '../utils/fileDownload';
+import { detectFormatInfo, getSafeDownloadFilename, downloadFile, dataUrlToBlob } from '../utils/fileDownload';
+import { generateSampleQuestionPaperPdfDataUrl } from '../utils/samplePdfGenerator';
 
 interface PDFModalProps {
   isOpen: boolean;
@@ -33,19 +34,65 @@ export const PDFModal: React.FC<PDFModalProps> = ({
   fileName,
   metadata,
 }) => {
-  if (!isOpen) return null;
+  const [effectiveRawUrl, setEffectiveRawUrl] = useState<string>('');
+  const [blobViewerUrl, setBlobViewerUrl] = useState<string>('');
 
-  const samplePdf =
-    fileUrl || 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf';
+  // Load effective raw URL (or generate sample PDF Data URL asynchronously)
+  useEffect(() => {
+    let isMounted = true;
+    if (fileUrl && !fileUrl.includes('dummy.pdf') && !fileUrl.includes('w3.org')) {
+      setEffectiveRawUrl(fileUrl);
+    } else {
+      generateSampleQuestionPaperPdfDataUrl({
+        title,
+        course: metadata?.course || 'UG',
+        academicYear: metadata?.academicYear || '2025–26',
+        semester: metadata?.semester || 'Semester I',
+        paperCode: metadata?.paperCode || 'MATH-CC-101',
+      }).then((dataUrl) => {
+        if (isMounted) setEffectiveRawUrl(dataUrl);
+      });
+    }
+    return () => {
+      isMounted = false;
+    };
+  }, [fileUrl, title, metadata]);
 
   const effectiveFileName = fileName || metadata?.fileName || metadata?.originalFileName;
-  const formatInfo = detectFormatInfo(samplePdf, effectiveFileName);
+  const formatInfo = detectFormatInfo(effectiveRawUrl, effectiveFileName);
   const isImage = formatInfo.isImage;
-  const downloadFileName = getSafeDownloadFilename(title, samplePdf, effectiveFileName);
+  const downloadFileName = getSafeDownloadFilename(title, effectiveRawUrl, effectiveFileName);
+
+  // Convert Data URLs to Blob Object URLs for frame compatibility across browsers
+  useEffect(() => {
+    if (!isOpen || !effectiveRawUrl) {
+      setBlobViewerUrl('');
+      return;
+    }
+
+    let createdUrl = '';
+    if (effectiveRawUrl.startsWith('data:')) {
+      const blob = dataUrlToBlob(effectiveRawUrl);
+      createdUrl = URL.createObjectURL(blob);
+      setBlobViewerUrl(createdUrl);
+    } else {
+      setBlobViewerUrl(effectiveRawUrl);
+    }
+
+    return () => {
+      if (createdUrl) {
+        URL.revokeObjectURL(createdUrl);
+      }
+    };
+  }, [isOpen, effectiveRawUrl]);
+
+  if (!isOpen) return null;
 
   const handleDownload = async (e: React.MouseEvent) => {
     e.preventDefault();
-    await downloadFile(samplePdf, downloadFileName);
+    if (effectiveRawUrl) {
+      await downloadFile(effectiveRawUrl, downloadFileName);
+    }
   };
 
   return (
@@ -132,17 +179,23 @@ export const PDFModal: React.FC<PDFModalProps> = ({
           {isImage ? (
             <div className="w-full h-[520px] rounded-lg border border-slate-300 shadow-inner bg-slate-900/95 flex items-center justify-center p-3 overflow-auto">
               <img
-                src={samplePdf}
+                src={blobViewerUrl || effectiveRawUrl}
                 alt={title}
                 className="max-h-full max-w-full object-contain rounded shadow-lg"
               />
             </div>
           ) : (
-            <iframe
-              src={samplePdf}
-              title={title}
+            <object
+              data={blobViewerUrl || effectiveRawUrl}
+              type="application/pdf"
               className="w-full h-[520px] rounded-lg border border-slate-300 shadow-inner bg-white"
-            />
+            >
+              <iframe
+                src={blobViewerUrl || effectiveRawUrl}
+                title={title}
+                className="w-full h-full rounded-lg border-0"
+              />
+            </object>
           )}
 
           <div className="mt-3 text-center text-xs text-slate-500 flex items-center gap-2">
@@ -150,7 +203,7 @@ export const PDFModal: React.FC<PDFModalProps> = ({
             <span>
               {isImage
                 ? 'Official department circular photo. You can view in high resolution or download below.'
-                : 'If preview is blocked by your browser settings, use the \'Open in New Window\' or \'Download PDF\' button below.'}
+                : 'Official question paper preview. If not displaying in your browser, click "Download Document" below to save the PDF.'}
             </span>
           </div>
         </div>
@@ -163,7 +216,7 @@ export const PDFModal: React.FC<PDFModalProps> = ({
 
           <div className="flex items-center gap-2">
             <a
-              href={samplePdf}
+              href={blobViewerUrl || effectiveRawUrl}
               target="_blank"
               rel="noreferrer"
               className="px-3.5 py-2 rounded-lg border border-slate-300 hover:bg-slate-100 text-slate-700 text-xs font-semibold flex items-center gap-1.5 transition"
@@ -191,3 +244,4 @@ export const PDFModal: React.FC<PDFModalProps> = ({
     </div>
   );
 };
+

@@ -137,6 +137,27 @@ export function getSafeDownloadFilename(
 }
 
 /**
+ * Converts a base64 Data URL to a binary Blob.
+ */
+export function dataUrlToBlob(dataUrl: string): Blob {
+  try {
+    const parts = dataUrl.split(',');
+    const mimeMatch = parts[0].match(/:(.*?);/);
+    const mime = mimeMatch ? mimeMatch[1] : 'application/pdf';
+    const bstr = atob(parts[1]);
+    let n = bstr.length;
+    const u8arr = new Uint8Array(n);
+    while (n--) {
+      u8arr[n] = bstr.charCodeAt(n);
+    }
+    return new Blob([u8arr], { type: mime });
+  } catch (err) {
+    console.error('Error converting dataUrl to Blob:', err);
+    return new Blob([], { type: 'application/pdf' });
+  }
+}
+
+/**
  * Downloads a file or photo in its exact original uploaded format.
  */
 export async function downloadFile(
@@ -150,8 +171,22 @@ export async function downloadFile(
 
   const filename = preferredFilename || 'Department_Download';
 
-  // 1. Data URLs or Blob URLs can be downloaded directly via anchor
-  if (urlOrData.startsWith('data:') || urlOrData.startsWith('blob:')) {
+  // 1. Convert Data URL to binary Blob URL for reliable native downloading
+  if (urlOrData.startsWith('data:')) {
+    const blob = dataUrlToBlob(urlOrData);
+    const blobUrl = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = blobUrl;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    setTimeout(() => URL.revokeObjectURL(blobUrl), 2000);
+    return;
+  }
+
+  // 2. Blob URLs can be downloaded directly
+  if (urlOrData.startsWith('blob:')) {
     const link = document.createElement('a');
     link.href = urlOrData;
     link.download = filename;
@@ -161,7 +196,7 @@ export async function downloadFile(
     return;
   }
 
-  // 2. For external or local HTTP/HTTPS URLs:
+  // 3. For external or local HTTP/HTTPS URLs:
   // Fetch as blob first so the browser strictly respects the download filename and extension
   try {
     const response = await fetch(urlOrData, { mode: 'cors' });
@@ -178,7 +213,7 @@ export async function downloadFile(
     document.body.removeChild(link);
     setTimeout(() => URL.revokeObjectURL(blobUrl), 2000);
   } catch (_err) {
-    // 3. Fallback if CORS prevents blob conversion
+    // Fallback if CORS prevents blob conversion
     const link = document.createElement('a');
     link.href = urlOrData;
     link.download = filename;
@@ -189,3 +224,4 @@ export async function downloadFile(
     document.body.removeChild(link);
   }
 }
+

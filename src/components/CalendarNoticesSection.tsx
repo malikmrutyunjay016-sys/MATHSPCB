@@ -450,7 +450,7 @@ export const CalendarNoticesSection: React.FC<CalendarNoticesSectionProps> = ({
   return (
     <section className="bg-[#071324] text-white py-16 border-b border-slate-800">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8">
-        {/* Header Ribbon & Admin Tools */}
+        {/* Header Ribbon */}
         <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 border-b border-slate-800 pb-4">
           <div>
             <div className="flex flex-wrap items-center gap-2 text-amber-400 text-xs font-bold uppercase tracking-widest">
@@ -463,74 +463,14 @@ export const CalendarNoticesSection: React.FC<CalendarNoticesSectionProps> = ({
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 -ml-2.5"></span>
                 LIVE FOR ALL
               </span>
-
-              {/* Current Date Display Badge */}
-              <div className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full bg-blue-500/20 text-blue-200 border border-blue-400/40 text-[11px] font-bold normal-case tracking-normal shadow-xs">
-                <CalendarIcon className="w-3.5 h-3.5 text-amber-400 shrink-0" />
-                <span>Current Date: <strong className="text-white font-extrabold">{todayFullDateFormatted}</strong></span>
-              </div>
             </div>
-
-            <div className="flex flex-wrap items-baseline gap-3 mt-1.5">
-              <h2 className="font-serif-academic text-3xl sm:text-4xl font-extrabold text-white">
-                {activeMonthName}
-              </h2>
-              <span className="text-slate-300 text-xs font-medium bg-slate-900/90 px-3 py-1 rounded-lg border border-slate-700 flex items-center gap-2 shadow-xs">
-                <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse"></span>
-                <span>Today: <strong className="text-amber-300 font-bold">{todayFullDateFormatted}</strong></span>
-              </span>
-            </div>
+            <h2 className="font-serif-academic text-3xl sm:text-4xl font-extrabold text-white mt-1">
+              {activeMonthName}
+            </h2>
           </div>
 
           <div className="flex flex-wrap items-center gap-2.5">
-            {isAdmin && (
-              <div className="flex flex-wrap items-center gap-2">
-                <button
-                  onClick={() => setIsUploadModalOpen(true)}
-                  className="px-3 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold flex items-center gap-1.5 transition cursor-pointer shadow-sm"
-                  title="Add occasion and dates in dd/mm/yyyy format"
-                >
-                  <Upload className="w-3.5 h-3.5" />
-                  <span>Add Occasion & Dates</span>
-                </button>
-                <button
-                  onClick={() => setIsFacultyLeaveModalOpen(true)}
-                  className="px-3 py-2 rounded-lg bg-purple-600 hover:bg-purple-500 text-white text-xs font-bold flex items-center gap-1.5 transition cursor-pointer shadow-sm"
-                  title="Add Faculty CL/DL/Academic Leave (Admin Only)"
-                >
-                  <UserCheck className="w-3.5 h-3.5" />
-                  <span>Add Faculty Leave (CL/DL)</span>
-                </button>
-                <button
-                  onClick={() => setIsAddEventModalOpen(true)}
-                  className="px-3 py-2 rounded-lg bg-amber-500 hover:bg-amber-400 text-slate-950 text-xs font-bold flex items-center gap-1.5 transition cursor-pointer shadow-sm"
-                >
-                  <Plus className="w-3.5 h-3.5" />
-                  <span>Add Event / Holiday</span>
-                </button>
-                <button
-                  onClick={handleClearAllMonthEvents}
-                  className="px-3 py-2 rounded-lg bg-rose-950 hover:bg-rose-900 text-rose-300 border border-rose-800 text-xs font-bold flex items-center gap-1.5 transition cursor-pointer"
-                  title="Clear all events from calendar for this month"
-                >
-                  <Trash2 className="w-3.5 h-3.5" />
-                  <span>Clear All Events</span>
-                </button>
-              </div>
-            )}
-
             <div className="flex items-center gap-2">
-              <button
-                onClick={() => {
-                  setCurrentDate(new Date(today.getFullYear(), today.getMonth(), 1));
-                  setSelectedDay(today.getDate());
-                }}
-                className="px-3 py-2 rounded-full border border-amber-500/50 bg-amber-500/15 hover:bg-amber-500/25 text-amber-300 font-bold text-xs flex items-center gap-1.5 transition cursor-pointer shadow-xs"
-                title={`Jump to Today's Date (${todayFormatted})`}
-              >
-                <CalendarIcon className="w-3.5 h-3.5 text-amber-400" />
-                <span>Today ({today.getDate()} {monthNames[today.getMonth()].slice(0, 3)})</span>
-              </button>
               <button
                 onClick={handlePrevMonth}
                 className="w-10 h-10 rounded-full border border-slate-700 hover:border-slate-500 bg-slate-900/60 flex items-center justify-center text-slate-300 hover:text-white transition cursor-pointer"

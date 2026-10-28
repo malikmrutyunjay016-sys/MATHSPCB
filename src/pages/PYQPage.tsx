@@ -31,6 +31,7 @@ import { QuestionPaper, DepartmentSettings, Student, StudentCredential } from '.
 import { useAuth } from '../context/AuthContext';
 import { loginStudentPortal, updateDepartmentSettings } from '../services/db';
 import { detectFormatInfo, getSafeDownloadFilename, downloadFile } from '../utils/fileDownload';
+import { generateSampleQuestionPaperPdfDataUrl } from '../utils/samplePdfGenerator';
 
 interface PYQPageProps {
   papers: QuestionPaper[];
@@ -1425,16 +1426,30 @@ export const PYQPage: React.FC<PYQPageProps> = ({
 
                         <button
                           type="button"
-                          onClick={() => {
+                          onClick={async () => {
+                            let effectiveUrl = paper.fileUrl;
+                            if (
+                              !effectiveUrl ||
+                              effectiveUrl.includes('dummy.pdf') ||
+                              effectiveUrl.includes('w3.org')
+                            ) {
+                              effectiveUrl = await generateSampleQuestionPaperPdfDataUrl({
+                                title: paper.title,
+                                course: paper.course || 'UG',
+                                academicYear: paper.academicYear || '2025–26',
+                                semester: paper.semester || 'Semester I',
+                                paperCode: paper.paperCode || 'MATH-CC-101',
+                              });
+                            }
                             const filename = getSafeDownloadFilename(
                               paper.fileName || `${paper.paperCode || 'Question_Paper'}_${paper.academicYear || ''}`,
-                              paper.fileUrl,
+                              effectiveUrl,
                               paper.fileName
                             );
-                            downloadFile(paper.fileUrl, filename);
+                            await downloadFile(effectiveUrl, filename);
                           }}
                           className="px-3.5 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-400 text-slate-950 text-xs font-bold flex items-center gap-1.5 transition cursor-pointer shadow-2xs"
-                          title="Download Question Paper in uploaded format"
+                          title="Download Question Paper in original format"
                         >
                           <Download className="w-3.5 h-3.5" />
                           <span>Download</span>
