@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import {
   X,
   UserCheck,
-  UserPlus,
   LogIn,
   LogOut,
   Lock,
@@ -26,7 +25,6 @@ import {
 import { CollegeLogo } from './CollegeLogo';
 import { Student, StudentCredential } from '../types';
 import {
-  registerNewStudentWithCredentials,
   loginStudentPortal,
   saveStudent,
   saveStudentCredential,
@@ -36,7 +34,7 @@ interface StudentPortalModalProps {
   isOpen: boolean;
   onClose: () => void;
   onStudentSaved?: (student: Student, credential?: StudentCredential) => void;
-  initialMode?: 'register' | 'login';
+  initialMode?: 'login' | 'dashboard';
 }
 
 const COURSE_OPTIONS = [
@@ -46,47 +44,16 @@ const COURSE_OPTIONS = [
   'PG',
 ];
 
-const SAMPLE_AVATARS = [
-  'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80',
-  'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?auto=format&fit=crop&w=400&q=80',
-  'https://images.unsplash.com/photo-1517841905240-472988babdf9?auto=format&fit=crop&w=400&q=80',
-  'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?auto=format&fit=crop&w=400&q=80',
-  'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=400&q=80',
-  'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=400&q=80',
-];
 
 export const StudentPortalModal: React.FC<StudentPortalModalProps> = ({
   isOpen,
   onClose,
   onStudentSaved,
-  initialMode = 'register',
+  initialMode = 'login',
 }) => {
-  const [mode, setMode] = useState<'register' | 'login' | 'dashboard'>(initialMode);
+  const [mode, setMode] = useState<'login' | 'dashboard'>(initialMode);
 
-  // Registration Form State (Compulsory: Name, Roll No, Photo, Course, Joining Year, Password)
-  const [regForm, setRegForm] = useState({
-    name: '',
-    rollNumber: '',
-    photoUrl: SAMPLE_AVATARS[0],
-    course: 'UG NEP',
-    joiningYear: '2026',
-    password: '',
-    confirmPassword: '',
-    uniqueId: '',
-    // Optional details that can be filled now or later
-    registrationNumber: '',
-    fatherMotherName: '',
-    gender: 'Female',
-    dob: '',
-    mobile: '',
-    email: '',
-    address: '',
-    category: 'GEN',
-    yearLevel: '1st Year',
-    semester: 'Semester I',
-  });
-
-  const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>, isEditMode = false) => {
+  const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
       if (file.size > 5 * 1024 * 1024) {
@@ -96,11 +63,7 @@ export const StudentPortalModal: React.FC<StudentPortalModalProps> = ({
       const reader = new FileReader();
       reader.onload = (event) => {
         const result = event.target?.result as string;
-        if (isEditMode) {
-          if (editForm) setEditForm({ ...editForm, photoUrl: result });
-        } else {
-          setRegForm((prev) => ({ ...prev, photoUrl: result }));
-        }
+        if (editForm) setEditForm({ ...editForm, photoUrl: result });
       };
       reader.readAsDataURL(file);
     }
@@ -121,96 +84,8 @@ export const StudentPortalModal: React.FC<StudentPortalModalProps> = ({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
-  const [registeredInfo, setRegisteredInfo] = useState<{
-    uniqueId: string;
-    rollNumber: string;
-    password: string;
-    name: string;
-  } | null>(null);
 
   if (!isOpen) return null;
-
-  // Handle New Student Registration
-  const handleRegister = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setErrorMessage('');
-    setSuccessMessage('');
-
-    if (!regForm.name.trim() || !regForm.rollNumber.trim() || !regForm.photoUrl.trim()) {
-      setErrorMessage('Roll Number, Full Name, and Photograph are compulsory.');
-      return;
-    }
-
-    if (!regForm.password.trim() || regForm.password.length < 4) {
-      setErrorMessage('Password must be at least 4 characters.');
-      return;
-    }
-
-    if (regForm.password !== regForm.confirmPassword) {
-      setErrorMessage('Passwords do not match.');
-      return;
-    }
-
-    setIsSubmitting(true);
-    try {
-      const assignedUniqueId = regForm.uniqueId.trim() || regForm.rollNumber.trim().toUpperCase();
-      const academicYear = `${regForm.joiningYear}–${(parseInt(regForm.joiningYear) + 1).toString().slice(-2)}`;
-
-      const studentData: Student = {
-        id: `stu-${Date.now()}`,
-        uniqueId: assignedUniqueId,
-        rollNumber: regForm.rollNumber.trim().toUpperCase(),
-        name: regForm.name.trim(),
-        gender: regForm.gender,
-        course: regForm.course,
-        academicYear,
-        yearLevel: regForm.yearLevel || '1st Year',
-        semester: regForm.semester || 'Semester I',
-        admissionYear: regForm.joiningYear,
-        category: regForm.category,
-        photoUrl: regForm.photoUrl.trim(),
-        academicStatus: 'Active',
-      };
-
-      if (regForm.registrationNumber.trim()) {
-        studentData.registrationNumber = regForm.registrationNumber.trim();
-      }
-      if (regForm.fatherMotherName?.trim()) {
-        studentData.fatherMotherName = regForm.fatherMotherName.trim();
-      }
-      if (regForm.dob?.trim()) {
-        studentData.dob = regForm.dob.trim();
-      }
-      if (regForm.mobile.trim()) {
-        studentData.mobile = regForm.mobile.trim();
-      }
-      if (regForm.email.trim()) {
-        studentData.email = regForm.email.trim();
-      }
-      if (regForm.address.trim()) {
-        studentData.address = regForm.address.trim();
-      }
-
-      const result = await registerNewStudentWithCredentials(studentData, regForm.password.trim());
-
-      if (result.success && result.student && result.credential) {
-        setRegisteredInfo({
-          uniqueId: assignedUniqueId,
-          rollNumber: studentData.rollNumber,
-          password: regForm.password.trim(),
-          name: studentData.name,
-        });
-        setSuccessMessage('Student details and login credentials successfully registered!');
-        if (onStudentSaved && result.student) onStudentSaved(result.student, result.credential);
-      } else {
-        setErrorMessage(result.error || 'Failed to complete registration.');
-      }
-    } catch (err: any) {
-      setErrorMessage(err?.message || 'Error creating student account.');
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
 
   // Handle Student Login
   const handleLogin = async (e: React.FormEvent) => {
@@ -305,9 +180,7 @@ export const StudentPortalModal: React.FC<StudentPortalModalProps> = ({
                 Department of Mathematics • Panchayat College
               </span>
               <h3 className="font-serif-academic text-base sm:text-lg font-bold text-white">
-                {mode === 'register'
-                  ? 'New Student Registration Portal'
-                  : mode === 'login'
+                {mode === 'login'
                   ? 'Student Portal Sign In'
                   : `Student Dashboard: ${loggedInStudent?.name}`}
               </h3>
@@ -322,43 +195,6 @@ export const StudentPortalModal: React.FC<StudentPortalModalProps> = ({
           </button>
         </div>
 
-        {/* Tab Switcher (When not in dashboard) */}
-        {mode !== 'dashboard' && (
-          <div className="bg-slate-100 p-1.5 border-b border-slate-200 flex text-xs">
-            <button
-              onClick={() => {
-                setMode('register');
-                setErrorMessage('');
-                setSuccessMessage('');
-                setRegisteredInfo(null);
-              }}
-              className={`flex-1 py-2 rounded-lg font-bold transition flex items-center justify-center gap-1.5 cursor-pointer ${
-                mode === 'register'
-                  ? 'bg-white text-[#0c2340] shadow-xs'
-                  : 'text-slate-600 hover:text-slate-900'
-              }`}
-            >
-              <UserPlus className="w-4 h-4 text-amber-600" />
-              <span>New Student Registration</span>
-            </button>
-            <button
-              onClick={() => {
-                setMode('login');
-                setErrorMessage('');
-                setSuccessMessage('');
-                setRegisteredInfo(null);
-              }}
-              className={`flex-1 py-2 rounded-lg font-bold transition flex items-center justify-center gap-1.5 cursor-pointer ${
-                mode === 'login'
-                  ? 'bg-white text-[#0c2340] shadow-xs'
-                  : 'text-slate-600 hover:text-slate-900'
-              }`}
-            >
-              <LogIn className="w-4 h-4 text-blue-700" />
-              <span>Login with ID & Password</span>
-            </button>
-          </div>
-        )}
 
         {/* Error / Success Notifications */}
         {errorMessage && (
@@ -375,373 +211,6 @@ export const StudentPortalModal: React.FC<StudentPortalModalProps> = ({
           </div>
         )}
 
-        {/* ================= MODE: REGISTER ================= */}
-        {mode === 'register' && (
-          <div className="p-6 overflow-y-auto space-y-5 text-xs">
-            {registeredInfo ? (
-              <div className="p-6 bg-slate-50 border border-emerald-300 rounded-2xl text-center space-y-4">
-                <div className="w-12 h-12 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center mx-auto">
-                  <CheckCircle2 className="w-7 h-7" />
-                </div>
-                <div>
-                  <h4 className="font-serif-academic text-base font-bold text-slate-900">
-                    Registration Completed Successfully!
-                  </h4>
-                  <p className="text-xs text-slate-600 mt-1">
-                    Your details have been saved to the department database. Save your login credentials below:
-                  </p>
-                </div>
-
-                <div className="p-4 bg-white rounded-xl border border-slate-200 text-left max-w-md mx-auto space-y-2 text-xs">
-                  <div className="flex justify-between border-b pb-1.5">
-                    <span className="text-slate-500 font-semibold">Student Name:</span>
-                    <strong className="text-slate-900">{registeredInfo.name}</strong>
-                  </div>
-                  <div className="flex justify-between border-b pb-1.5">
-                    <span className="text-slate-500 font-semibold">Unique Student ID / Login ID:</span>
-                    <strong className="font-mono text-blue-700">{registeredInfo.uniqueId}</strong>
-                  </div>
-                  <div className="flex justify-between border-b pb-1.5">
-                    <span className="text-slate-500 font-semibold">Roll Number:</span>
-                    <strong className="font-mono text-slate-900">{registeredInfo.rollNumber}</strong>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-slate-500 font-semibold">Your Password:</span>
-                    <strong className="font-mono text-emerald-800">{registeredInfo.password}</strong>
-                  </div>
-                </div>
-
-                <p className="text-[11px] text-slate-500">
-                  Note: A master record of your Unique ID and password is securely saved and visible to the department administrator in case you need password assistance.
-                </p>
-
-                <div className="flex justify-center gap-3 pt-2">
-                  <button
-                    onClick={() => {
-                      setLoginId(registeredInfo.uniqueId);
-                      setLoginPass(registeredInfo.password);
-                      setRegisteredInfo(null);
-                      setMode('login');
-                    }}
-                    className="px-5 py-2.5 bg-[#0c2340] hover:bg-blue-950 text-white font-bold rounded-xl text-xs flex items-center gap-1.5 transition cursor-pointer"
-                  >
-                    <LogIn className="w-4 h-4" />
-                    <span>Proceed to Login</span>
-                  </button>
-                </div>
-              </div>
-            ) : (
-              <form onSubmit={handleRegister} className="space-y-5">
-                {/* Notice banner */}
-                <div className="p-3 bg-amber-500/10 border border-amber-500/30 rounded-xl text-amber-900 text-xs">
-                  <span className="font-bold block">Important Enrollment Notice:</span>
-                  <span>
-                    Roll number, name, course, joining year, photo, and password are <strong>compulsory</strong>. Other details can be completed now or updated anytime using your Unique ID and Password.
-                  </span>
-                </div>
-
-                {/* Section 1: Compulsory Fields */}
-                <div className="space-y-3 bg-slate-50 p-4 rounded-xl border border-slate-200">
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-amber-700 block">
-                    1. Compulsory Initial Details
-                  </span>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <div>
-                      <label className="block font-bold text-slate-800 mb-1">
-                        Student Full Name *
-                      </label>
-                      <input
-                        type="text"
-                        required
-                        value={regForm.name}
-                        onChange={(e) => setRegForm({ ...regForm, name: e.target.value })}
-                        placeholder="e.g. Subhashree Barik"
-                        className="w-full p-2.5 rounded-lg border border-slate-200 text-xs bg-white focus:outline-hidden focus:border-blue-600"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block font-bold text-slate-800 mb-1">
-                        Roll Number *
-                      </label>
-                      <input
-                        type="text"
-                        required
-                        value={regForm.rollNumber}
-                        onChange={(e) => setRegForm({ ...regForm, rollNumber: e.target.value })}
-                        placeholder="e.g. MATH26-001"
-                        className="w-full p-2.5 rounded-lg border border-slate-200 text-xs bg-white font-mono focus:outline-hidden focus:border-blue-600"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <div>
-                      <label className="block font-bold text-slate-800 mb-1">
-                        Course / Program *
-                      </label>
-                      <select
-                        required
-                        value={regForm.course}
-                        onChange={(e) => setRegForm({ ...regForm, course: e.target.value })}
-                        className="w-full p-2.5 rounded-lg border border-slate-200 text-xs bg-white focus:outline-hidden focus:border-blue-600 font-semibold text-blue-900"
-                      >
-                        {COURSE_OPTIONS.map((c) => (
-                          <option key={c} value={c}>
-                            {c}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-
-                    <div>
-                      <label className="block font-bold text-slate-800 mb-1">
-                        Joining / Admission Year *
-                      </label>
-                      <select
-                        required
-                        value={regForm.joiningYear}
-                        onChange={(e) => setRegForm({ ...regForm, joiningYear: e.target.value })}
-                        className="w-full p-2.5 rounded-lg border border-slate-200 text-xs bg-white focus:outline-hidden focus:border-blue-600 font-semibold"
-                      >
-                        <option value="2027">2027</option>
-                        <option value="2026">2026</option>
-                        <option value="2025">2025</option>
-                        <option value="2024">2024</option>
-                        <option value="2023">2023</option>
-                      </select>
-                    </div>
-                  </div>
-
-                  {/* Compulsory Photo Selection */}
-                  <div>
-                    <label className="block font-bold text-slate-800 mb-1">
-                      Student Photograph (Compulsory) *
-                    </label>
-                    <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 p-3 bg-white rounded-xl border border-slate-200">
-                      {regForm.photoUrl ? (
-                        <img
-                          src={regForm.photoUrl}
-                          alt="Preview"
-                          className="w-16 h-16 rounded-xl object-cover border-2 border-amber-500 shrink-0 shadow-xs"
-                        />
-                      ) : (
-                        <div className="w-16 h-16 rounded-xl bg-slate-100 border border-dashed border-slate-300 flex items-center justify-center text-slate-400 shrink-0">
-                          <Image className="w-6 h-6" />
-                        </div>
-                      )}
-
-                      <div className="flex-1 space-y-2 w-full">
-                        <div className="flex items-center gap-2">
-                          <label className="cursor-pointer inline-flex items-center gap-1.5 px-3 py-1.5 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold rounded-lg text-xs transition shadow-xs">
-                            <Upload className="w-3.5 h-3.5" />
-                            <span>Upload from Device</span>
-                            <input
-                              type="file"
-                              accept="image/*"
-                              onChange={(e) => handlePhotoUpload(e, false)}
-                              className="hidden"
-                            />
-                          </label>
-                          <span className="text-[11px] text-slate-400">or enter URL below</span>
-                        </div>
-
-                        <input
-                          type="url"
-                          required
-                          value={regForm.photoUrl}
-                          onChange={(e) => setRegForm({ ...regForm, photoUrl: e.target.value })}
-                          placeholder="Paste image URL (https://...)"
-                          className="w-full p-2 rounded-lg border border-slate-200 text-xs bg-slate-50 focus:bg-white focus:outline-hidden focus:border-blue-600"
-                        />
-                      </div>
-                    </div>
-
-                    <div className="flex items-center gap-2 mt-2">
-                      <span className="text-[10px] text-slate-500">Quick avatars:</span>
-                      <div className="flex items-center gap-1.5 overflow-x-auto py-1">
-                        {SAMPLE_AVATARS.map((url, i) => (
-                          <img
-                            key={i}
-                            src={url}
-                            alt="Sample"
-                            onClick={() => setRegForm({ ...regForm, photoUrl: url })}
-                            className={`w-7 h-7 rounded-full object-cover cursor-pointer border-2 transition ${
-                              regForm.photoUrl === url
-                                ? 'border-amber-500 scale-110'
-                                : 'border-transparent opacity-70 hover:opacity-100'
-                            }`}
-                          />
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Password & Confirm */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
-                    <div>
-                      <label className="block font-bold text-slate-800 mb-1">
-                        Portal Password *
-                      </label>
-                      <input
-                        type="password"
-                        required
-                        value={regForm.password}
-                        onChange={(e) => setRegForm({ ...regForm, password: e.target.value })}
-                        placeholder="At least 4 characters"
-                        className="w-full p-2.5 rounded-lg border border-slate-200 text-xs bg-white focus:outline-hidden focus:border-blue-600 font-mono"
-                      />
-                    </div>
-                    <div>
-                      <label className="block font-bold text-slate-800 mb-1">
-                        Confirm Password *
-                      </label>
-                      <input
-                        type="password"
-                        required
-                        value={regForm.confirmPassword}
-                        onChange={(e) => setRegForm({ ...regForm, confirmPassword: e.target.value })}
-                        placeholder="Re-enter password"
-                        className="w-full p-2.5 rounded-lg border border-slate-200 text-xs bg-white focus:outline-hidden focus:border-blue-600 font-mono"
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                {/* Section 2: Optional Details to Fill Now or Later */}
-                <details className="bg-slate-50 p-4 rounded-xl border border-slate-200 group">
-                  <summary className="font-bold text-slate-700 cursor-pointer text-xs flex items-center justify-between">
-                    <span className="text-amber-800">
-                      + Additional Profile Details (Optional - Can be filled later with ID & Password)
-                    </span>
-                    <span className="text-[10px] text-slate-400 group-open:rotate-180 transition-transform">
-                      ▼
-                    </span>
-                  </summary>
-
-                  <div className="space-y-3 pt-3 mt-2 border-t border-slate-200">
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      <div>
-                        <label className="block text-slate-600 mb-1">Registration Number</label>
-                        <input
-                          type="text"
-                          value={regForm.registrationNumber}
-                          onChange={(e) =>
-                            setRegForm({ ...regForm, registrationNumber: e.target.value })
-                          }
-                          placeholder="e.g. SU26MTH001"
-                          className="w-full p-2 rounded-lg border border-slate-200 text-xs bg-white"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-slate-600 mb-1">Father / Mother / Guardian</label>
-                        <input
-                          type="text"
-                          value={regForm.fatherMotherName}
-                          onChange={(e) =>
-                            setRegForm({ ...regForm, fatherMotherName: e.target.value })
-                          }
-                          placeholder="Guardian Name"
-                          className="w-full p-2 rounded-lg border border-slate-200 text-xs bg-white"
-                        />
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                      <div>
-                        <label className="block text-slate-600 mb-1">Gender</label>
-                        <select
-                          value={regForm.gender}
-                          onChange={(e) => setRegForm({ ...regForm, gender: e.target.value })}
-                          className="w-full p-2 rounded-lg border border-slate-200 text-xs bg-white"
-                        >
-                          <option value="Female">Female</option>
-                          <option value="Male">Male</option>
-                          <option value="Other">Other</option>
-                        </select>
-                      </div>
-                      <div>
-                        <label className="block text-slate-600 mb-1">Date of Birth</label>
-                        <input
-                          type="date"
-                          value={regForm.dob}
-                          onChange={(e) => setRegForm({ ...regForm, dob: e.target.value })}
-                          className="w-full p-2 rounded-lg border border-slate-200 text-xs bg-white"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-slate-600 mb-1">Category</label>
-                        <select
-                          value={regForm.category}
-                          onChange={(e) => setRegForm({ ...regForm, category: e.target.value })}
-                          className="w-full p-2 rounded-lg border border-slate-200 text-xs bg-white"
-                        >
-                          <option value="GEN">GEN</option>
-                          <option value="OBC">OBC</option>
-                          <option value="SEBC">SEBC</option>
-                          <option value="SC">SC</option>
-                          <option value="ST">ST</option>
-                        </select>
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      <div>
-                        <label className="block text-slate-600 mb-1">Mobile Phone Number</label>
-                        <input
-                          type="tel"
-                          value={regForm.mobile}
-                          onChange={(e) => setRegForm({ ...regForm, mobile: e.target.value })}
-                          placeholder="+91 94370 00000"
-                          className="w-full p-2 rounded-lg border border-slate-200 text-xs bg-white"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-slate-600 mb-1">Email Address</label>
-                        <input
-                          type="email"
-                          value={regForm.email}
-                          onChange={(e) => setRegForm({ ...regForm, email: e.target.value })}
-                          placeholder="student@example.com"
-                          className="w-full p-2 rounded-lg border border-slate-200 text-xs bg-white"
-                        />
-                      </div>
-                    </div>
-
-                    <div>
-                      <label className="block text-slate-600 mb-1">Home / Postal Address</label>
-                      <input
-                        type="text"
-                        value={regForm.address}
-                        onChange={(e) => setRegForm({ ...regForm, address: e.target.value })}
-                        placeholder="Village / Town, District, PIN Code"
-                        className="w-full p-2 rounded-lg border border-slate-200 text-xs bg-white"
-                      />
-                    </div>
-                  </div>
-                </details>
-
-                <div className="flex items-center justify-end gap-3 pt-2">
-                  <button
-                    type="button"
-                    onClick={onClose}
-                    className="px-4 py-2 border rounded-lg text-slate-700 hover:bg-slate-100"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="submit"
-                    disabled={isSubmitting}
-                    className="px-6 py-2.5 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold rounded-xl text-xs uppercase tracking-wider transition shadow-md disabled:opacity-50 cursor-pointer"
-                  >
-                    {isSubmitting ? 'Registering Details...' : 'Submit & Create Student Account'}
-                  </button>
-                </div>
-              </form>
-            )}
-          </div>
-        )}
 
         {/* ================= MODE: LOGIN ================= */}
         {mode === 'login' && (
@@ -811,14 +280,7 @@ export const StudentPortalModal: React.FC<StudentPortalModalProps> = ({
               </button>
 
               <div className="text-center pt-2 text-[11px] text-slate-500">
-                Don&apos;t have an ID yet?{' '}
-                <button
-                  type="button"
-                  onClick={() => setMode('register')}
-                  className="text-amber-700 font-bold hover:underline"
-                >
-                  Register here
-                </button>
+                Official student credentials are provided upon admission by the department administrator.
               </div>
             </form>
           </div>
@@ -959,7 +421,7 @@ export const StudentPortalModal: React.FC<StudentPortalModalProps> = ({
                       <input
                         type="file"
                         accept="image/*"
-                        onChange={(e) => handlePhotoUpload(e, true)}
+                        onChange={(e) => handlePhotoUpload(e)}
                         className="hidden"
                       />
                     </label>

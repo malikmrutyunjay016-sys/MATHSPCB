@@ -179,53 +179,8 @@ export const FacultyPage: React.FC<FacultyPageProps> = ({
             <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider shrink-0 mr-1">
               Filter By:
             </span>
-            <button
-              onClick={() => setSelectedCategory('all')}
-              className={`px-3 py-1.5 rounded-lg font-bold text-xs transition cursor-pointer shrink-0 flex items-center gap-1.5 ${
-                selectedCategory === 'all'
-                  ? 'bg-[#0c2340] text-amber-300 shadow-2xs'
-                  : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-              }`}
-            >
-              <span>All Faculty</span>
-              <span className={`px-1.5 py-0.2 rounded-full text-[10px] ${
-                selectedCategory === 'all' ? 'bg-amber-400/20 text-amber-300' : 'bg-slate-200 text-slate-700'
-              }`}>
-                {categoryCounts.all}
-              </span>
-            </button>
 
-            <button
-              onClick={() => setSelectedCategory('regular')}
-              className={`px-3 py-1.5 rounded-lg font-bold text-xs transition cursor-pointer shrink-0 flex items-center gap-1.5 ${
-                selectedCategory === 'regular'
-                  ? 'bg-blue-700 text-white shadow-2xs'
-                  : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-              }`}
-            >
-              <span>Regular Faculty</span>
-              <span className={`px-1.5 py-0.2 rounded-full text-[10px] ${
-                selectedCategory === 'regular' ? 'bg-white/20 text-white' : 'bg-slate-200 text-slate-700'
-              }`}>
-                {categoryCounts.regular}
-              </span>
-            </button>
 
-            <button
-              onClick={() => setSelectedCategory('guest')}
-              className={`px-3 py-1.5 rounded-lg font-bold text-xs transition cursor-pointer shrink-0 flex items-center gap-1.5 ${
-                selectedCategory === 'guest'
-                  ? 'bg-amber-700 text-white shadow-2xs'
-                  : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-              }`}
-            >
-              <span>Guest Faculty</span>
-              <span className={`px-1.5 py-0.2 rounded-full text-[10px] ${
-                selectedCategory === 'guest' ? 'bg-white/20 text-white' : 'bg-slate-200 text-slate-700'
-              }`}>
-                {categoryCounts.guest}
-              </span>
-            </button>
           </div>
         </div>
 

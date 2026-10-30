@@ -543,7 +543,7 @@ export const StudentModal: React.FC<{
           }}
           className="p-6 overflow-y-auto space-y-4 text-xs"
         >
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-3 gap-4">
             <div>
               <label className="block font-bold text-slate-700 uppercase mb-1 text-[11px]">
                 Roll Number *
@@ -554,6 +554,18 @@ export const StudentModal: React.FC<{
                 value={form.rollNumber}
                 onChange={(e) => setForm({ ...form, rollNumber: e.target.value })}
                 className="w-full p-2.5 rounded-lg border border-slate-200 text-xs focus:outline-hidden font-mono"
+              />
+            </div>
+            <div>
+              <label className="block font-bold text-slate-700 uppercase mb-1 text-[11px]">
+                Barcode
+              </label>
+              <input
+                type="text"
+                value={form.barcode || ''}
+                onChange={(e) => setForm({ ...form, barcode: e.target.value })}
+                placeholder="e.g. 26BC1001"
+                className="w-full p-2.5 rounded-lg border border-slate-200 text-xs focus:outline-hidden font-mono text-indigo-700"
               />
             </div>
             <div>
@@ -569,28 +581,69 @@ export const StudentModal: React.FC<{
             </div>
           </div>
 
+          <div>
+            <label className="block font-bold text-slate-700 uppercase mb-1 text-[11px]">
+              Applicant Name (Student Full Name) *
+            </label>
+            <input
+              type="text"
+              required
+              value={form.name}
+              onChange={(e) => setForm({ ...form, name: e.target.value })}
+              className="w-full p-2.5 rounded-lg border border-slate-200 text-xs focus:outline-hidden font-semibold text-slate-900"
+            />
+          </div>
+
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block font-bold text-slate-700 uppercase mb-1 text-[11px]">
-                Student Full Name *
+                Father Name
               </label>
               <input
                 type="text"
-                required
-                value={form.name}
-                onChange={(e) => setForm({ ...form, name: e.target.value })}
+                value={form.fatherName || ''}
+                onChange={(e) => setForm({ ...form, fatherName: e.target.value })}
+                placeholder="Father's full name"
                 className="w-full p-2.5 rounded-lg border border-slate-200 text-xs focus:outline-hidden"
               />
             </div>
             <div>
               <label className="block font-bold text-slate-700 uppercase mb-1 text-[11px]">
-                Guardian Name
+                Mother Name
+              </label>
+              <input
+                type="text"
+                value={form.motherName || ''}
+                onChange={(e) => setForm({ ...form, motherName: e.target.value })}
+                placeholder="Mother's full name"
+                className="w-full p-2.5 rounded-lg border border-slate-200 text-xs focus:outline-hidden"
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block font-bold text-slate-700 uppercase mb-1 text-[11px]">
+                Guardian / Combined Parent Name
               </label>
               <input
                 type="text"
                 value={form.fatherMotherName || ''}
                 onChange={(e) => setForm({ ...form, fatherMotherName: e.target.value })}
+                placeholder="e.g. Ramesh & Sunita Mohapatra"
                 className="w-full p-2.5 rounded-lg border border-slate-200 text-xs focus:outline-hidden"
+              />
+            </div>
+            <div>
+              <label className="block font-bold text-slate-700 uppercase mb-1 text-[11px]">
+                Aadhaar Number
+              </label>
+              <input
+                type="text"
+                value={form.aadhaarNumber || ''}
+                onChange={(e) => setForm({ ...form, aadhaarNumber: e.target.value })}
+                placeholder="e.g. 1234-5678-9012"
+                className="w-full p-2.5 rounded-lg border border-slate-200 text-xs focus:outline-hidden font-mono"
               />
             </div>
           </div>

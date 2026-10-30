@@ -42,6 +42,7 @@ import {
 import { DriveBackupTab } from '../components/DriveBackupTab';
 import { MarkFoilGenerator } from '../components/MarkFoilGenerator';
 import { ExcelStudentImportModal } from '../components/ExcelStudentImportModal';
+import { BatchPromotionModal } from '../components/BatchPromotionModal';
 import { DownloadsPage } from './DownloadsPage';
 import {
   Faculty,
@@ -251,6 +252,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 
   // Excel Student Import Modal State
   const [isExcelStudentImportModalOpen, setIsExcelStudentImportModalOpen] = useState(false);
+  const [isBatchPromotionModalOpen, setIsBatchPromotionModalOpen] = useState(false);
   const [excelImportNotification, setExcelImportNotification] = useState<string | null>(null);
 
   // Credentials Vault State
@@ -426,6 +428,11 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
         !term ||
         s.name.toLowerCase().includes(term) ||
         s.rollNumber.toLowerCase().includes(term) ||
+        (s.barcode && s.barcode.toLowerCase().includes(term)) ||
+        (s.aadhaarNumber && s.aadhaarNumber.toLowerCase().includes(term)) ||
+        (s.fatherName && s.fatherName.toLowerCase().includes(term)) ||
+        (s.motherName && s.motherName.toLowerCase().includes(term)) ||
+        (s.fatherMotherName && s.fatherMotherName.toLowerCase().includes(term)) ||
         (s.registrationNumber && s.registrationNumber.toLowerCase().includes(term)) ||
         (s.uniqueId && s.uniqueId.toLowerCase().includes(term));
 
@@ -436,9 +443,13 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   const handleExportStudentsCSV = () => {
     const headers = [
       'Roll Number',
+      'Barcode',
       'Registration Number',
-      'Student Name',
+      'Applicant Name',
+      'Father Name',
+      'Mother Name',
       'Guardian',
+      'Aadhaar Number',
       'Course',
       'Academic Session',
       'Year Level',
@@ -451,9 +462,13 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     ];
     const rows = filteredAdminStudents.map((s) => [
       `"${s.rollNumber}"`,
+      `"${s.barcode || ''}"`,
       `"${s.registrationNumber || ''}"`,
       `"${s.name}"`,
+      `"${s.fatherName || ''}"`,
+      `"${s.motherName || ''}"`,
       `"${s.fatherMotherName || ''}"`,
+      `"${s.aadhaarNumber || ''}"`,
       `"${s.course}"`,
       `"${s.academicYear}"`,
       `"${s.yearLevel}"`,
@@ -1069,6 +1084,15 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 
                   <div className="flex flex-wrap items-center gap-2 shrink-0">
                     <button
+                      onClick={() => setIsBatchPromotionModalOpen(true)}
+                      className="px-3.5 py-2 bg-indigo-900 hover:bg-indigo-800 text-white font-bold rounded-xl text-xs flex items-center gap-1.5 transition shadow-xs cursor-pointer"
+                      title="Promote a semester or academic year level to an entire admission batch"
+                    >
+                      <GraduationCap className="w-4 h-4 text-amber-300" />
+                      <span>Promote Batch</span>
+                    </button>
+
+                    <button
                       onClick={() => setIsExcelStudentImportModalOpen(true)}
                       className="px-3.5 py-2 bg-[#0c2340] hover:bg-slate-800 text-amber-300 font-bold rounded-xl text-xs flex items-center gap-1.5 transition shadow-xs cursor-pointer"
                       title="Import students from Excel Sheet (.xlsx / .csv)"
@@ -1231,7 +1255,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                           <th className="py-3 px-4">Roll No / Reg</th>
                           <th className="py-3 px-4">Student Name & Photo</th>
                           <th className="py-3 px-4">Course</th>
-                          <th className="py-3 px-4">Session & Term</th>
+                          <th className="py-3 px-4">Year, Admission Batch & Semester</th>
                           <th className="py-3 px-4">Category</th>
                           <th className="py-3 px-4">Contact</th>
                           <th className="py-3 px-4 text-right">Admin Actions</th>
@@ -1260,30 +1284,48 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                         ) : (
                           filteredAdminStudents.map((s) => (
                             <tr key={s.id} className="hover:bg-blue-50/30 transition group">
-                              {/* Roll / Reg */}
+                              {/* Roll / Reg / Barcode */}
                               <td className="py-3 px-4 font-mono font-bold text-slate-900">
                                 <div>{s.rollNumber}</div>
+                                {s.barcode && (
+                                  <div className="text-[10px] text-indigo-700 font-semibold">
+                                    BC: {s.barcode}
+                                  </div>
+                                )}
                                 <div className="text-[10px] text-slate-400 font-normal">
-                                  {s.registrationNumber || 'Pending'}
+                                  {s.registrationNumber || 'Pending Reg'}
                                 </div>
                               </td>
 
-                              {/* Name & Photo */}
+                              {/* Name & Photo & Parents */}
                               <td className="py-3 px-4">
-                                <div className="flex items-center gap-3">
+                                <div className="flex items-start gap-3">
                                   <img
                                     src={
                                       s.photoUrl ||
                                       'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=150&q=80'
                                     }
                                     alt={s.name}
-                                    className="w-8 h-8 rounded-full object-cover border border-slate-200"
+                                    className="w-8 h-8 rounded-full object-cover border border-slate-200 shrink-0 mt-0.5"
                                   />
                                   <div>
                                     <div className="font-bold text-slate-900">{s.name}</div>
-                                    <div className="text-[10px] text-slate-400">
-                                      {s.fatherMotherName ? `Guardian: ${s.fatherMotherName}` : ''}
+                                    <div className="text-[10px] text-slate-500">
+                                      {s.fatherName || s.motherName ? (
+                                        <span>
+                                          {s.fatherName ? `F: ${s.fatherName}` : ''}
+                                          {s.fatherName && s.motherName ? ' • ' : ''}
+                                          {s.motherName ? `M: ${s.motherName}` : ''}
+                                        </span>
+                                      ) : (
+                                        s.fatherMotherName ? `Guardian: ${s.fatherMotherName}` : ''
+                                      )}
                                     </div>
+                                    {s.aadhaarNumber && (
+                                      <div className="text-[9.5px] text-slate-400 font-mono">
+                                        Aadhaar: {s.aadhaarNumber}
+                                      </div>
+                                    )}
                                   </div>
                                 </div>
                               </td>
@@ -3212,6 +3254,20 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
           setTimeout(() => setExcelImportNotification(null), 6000);
         }}
       />
+
+      {/* Student Batch Promotion Modal */}
+      {isBatchPromotionModalOpen && (
+        <BatchPromotionModal
+          isOpen={isBatchPromotionModalOpen}
+          onClose={() => setIsBatchPromotionModalOpen(false)}
+          students={students}
+          onSuccess={(count, batch) => {
+            setExcelImportNotification(`Successfully promoted ${count} student${count !== 1 ? 's' : ''} in Batch ${batch}.`);
+            if (onRefreshData) onRefreshData();
+            setTimeout(() => setExcelImportNotification(null), 7000);
+          }}
+        />
+      )}
     </div>
   );
 };

@@ -377,6 +377,44 @@ export async function clearAllStudents() {
   }
 }
 
+export async function batchPromoteStudents(
+  updatedStudents: Student[]
+): Promise<{ success: boolean; count: number; error?: string }> {
+  const path = 'students';
+  try {
+    const BATCH_SIZE = 400;
+    for (let i = 0; i < updatedStudents.length; i += BATCH_SIZE) {
+      const chunk = updatedStudents.slice(i, i + BATCH_SIZE);
+      const batch = writeBatch(db);
+      for (const s of chunk) {
+        const studentToSave = sanitizeForFirestore({
+          ...s,
+          updatedAt: new Date().toISOString(),
+        });
+        batch.set(doc(db, 'students', s.id), studentToSave, { merge: true });
+
+        // Synchronize linked credential record
+        const uniqueId = s.uniqueId || s.rollNumber.trim();
+        const credRef = doc(db, 'student_credentials', uniqueId);
+        batch.set(
+          credRef,
+          sanitizeForFirestore({
+            course: s.course,
+            admissionYear: s.admissionYear || '2026',
+            updatedAt: new Date().toISOString(),
+          }),
+          { merge: true }
+        );
+      }
+      await batch.commit();
+    }
+    return { success: true, count: updatedStudents.length };
+  } catch (err: any) {
+    handleFirestoreError(err, OperationType.WRITE, path);
+    return { success: false, count: 0, error: err?.message || 'Failed to promote batch' };
+  }
+}
+
 // ------------------- STUDENT CREDENTIALS (ADMIN VAULT & PORTAL) -------------------
 export function subscribeToStudentCredentials(
   callback: (credentials: StudentCredential[]) => void,

@@ -35,9 +35,13 @@ export interface Student {
   id: string;
   uniqueId?: string; // Unique Student Portal Login ID
   rollNumber: string;
+  barcode?: string;
   registrationNumber?: string;
   name: string;
+  fatherName?: string;
+  motherName?: string;
   fatherMotherName?: string;
+  aadhaarNumber?: string;
   gender?: string;
   dob?: string;
   course: 'UG NEP' | 'UG AEDP' | 'UG CBCS' | 'PG' | string; // Kept strictly to UG NEP, UG AEDP, UG CBCS, PG

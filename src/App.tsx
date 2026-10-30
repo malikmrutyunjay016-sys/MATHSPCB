@@ -237,8 +237,8 @@ function AppContent() {
   const [faqModalOpen, setFaqModalOpen] = useState(false);
   const [studentPortalModal, setStudentPortalModal] = useState<{
     isOpen: boolean;
-    mode: 'register' | 'login';
-  }>({ isOpen: false, mode: 'register' });
+    mode: 'login';
+  }>({ isOpen: false, mode: 'login' });
   const [pdfModalData, setPdfModalData] = useState<{
     isOpen: boolean;
     title: string;
@@ -928,8 +928,8 @@ function AppContent() {
         activeTab={activeTab}
         setActiveTab={setActiveTab}
         onOpenSearch={() => setSearchModalOpen(true)}
-        onOpenStudentPortal={(mode = 'register') =>
-          setStudentPortalModal({ isOpen: true, mode })
+        onOpenStudentPortal={(mode = 'login') =>
+          setStudentPortalModal({ isOpen: true, mode: 'login' })
         }
         marqueeText={settings.announcementMarquee}
         notices={notices}
@@ -983,7 +983,7 @@ function AppContent() {
             onEditStudent={(s) => setStudentModal({ isOpen: true, item: s })}
             onDeleteStudent={handleDeleteStudent}
             onOpenRegisterModal={() =>
-              setStudentPortalModal({ isOpen: true, mode: 'register' })
+              setStudentPortalModal({ isOpen: true, mode: 'login' })
             }
             onOpenLoginModal={() =>
               setStudentPortalModal({ isOpen: true, mode: 'login' })

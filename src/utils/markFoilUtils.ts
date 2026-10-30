@@ -117,12 +117,22 @@ export function marksToWordsDigitByDigit(
 }
 
 /**
- * Generates an authentic downloadable vector PDF (.pdf) strictly fitting onto a
- * SINGLE A4 PORTRAIT PAGE with increased cell height and enlarged font sizes:
- * - A4 Portrait sheet with two identical vertical slips side by side (Left & Right)
- * - Increased cell height (8.95mm - 9.25mm per row for 25 rows) for generous writing & readability space
- * - Enlarged typography: 11.5pt headers, 11-13pt table entries, 11.5pt signatures
- * - Hard zero-overflow guarantee: strictly 1 page
+ * Calculates the total number of mark foil sheets/pages required based on student count and mode
+ */
+export function calculateMarkFoilPages(
+  entriesCount: number,
+  mode: 'twin' | 'continuous' | 'blank' = 'twin',
+  totalRows: number = 25
+): number {
+  if (mode === 'blank' || entriesCount === 0) return 1;
+  const capacityPerPage = mode === 'continuous' ? totalRows * 2 : totalRows;
+  return Math.max(1, Math.ceil(entriesCount / capacityPerPage));
+}
+
+/**
+ * Generates an authentic downloadable vector PDF (.pdf) matching the official
+ * dual-column University Mark Foil format. If students exceed one sheet (e.g. >25 in twin mode
+ * or >50 in continuous mode), multiple pages (Page 1 of N, Page 2 of N...) are automatically generated.
  */
 export function generateMarkFoilPDF(
   config: MarkFoilConfig,
@@ -139,49 +149,65 @@ export function generateMarkFoilPDF(
   const cellHeightPreset = options?.cellHeightPreset || config.cellHeightPreset || 'generous';
   const fontSizePreset = options?.fontSizePreset || config.fontSizePreset || 'large';
 
+  const totalPages = calculateMarkFoilPages(entries.length, mode, totalRows);
+
   const doc = new jsPDF({
     orientation: 'portrait',
     unit: 'mm',
     format: 'a4',
   });
 
-  const colWidth = 91;
-  const leftX = 9;
-  const rightX = 110;
-  const topY = 6.5; // 6.5mm top margin maximizes available height for tall cells
+  // A4 dimensions: 210mm wide x 297mm high
+  // Exactly centered horizontally:
+  // Each slip: 92mm. Gap: 6mm. Total width: 190mm.
+  // Left margin = (210 - 190) / 2 = 10mm. Right margin = 10mm. Center cut line = 105mm.
+  const colWidth = 92;
+  const gap = 6;
+  const totalWidth = colWidth * 2 + gap;
+  const leftX = (210 - totalWidth) / 2; // 10mm
+  const rightX = leftX + colWidth + gap; // 108mm
+  const cutLineX = 105;
 
-  // Calibrated available height for table data rows while guaranteeing single page (A4 = 297mm)
-  // Total height: topY (6.5) + header (28.5) + table headers (11.5) + data rows + footer (14.5) + margin (12) = 297
-  const baseAvailableH = cellHeightPreset === 'extra' ? 232 : cellHeightPreset === 'standard' ? 212 : 224;
+  // Calibrated available height for table data rows while maintaining centered A4 portrait fit
+  const baseAvailableH = cellHeightPreset === 'extra' ? 222 : cellHeightPreset === 'standard' ? 200 : 212;
   const th1Height = 6.0;
   const th2Height = 5.5;
-  const rowHeight = Math.min(11.5, Math.max(7.2, (baseAvailableH - (th1Height + th2Height)) / totalRows));
+  const rowHeight = Math.min(10.5, Math.max(7.0, (baseAvailableH - (th1Height + th2Height)) / totalRows));
   const totalTableH = th1Height + th2Height + totalRows * rowHeight;
 
-  // Enlarged Typography sizes in pt
-  const fontMeta = fontSizePreset === 'extralarge' ? 12 : fontSizePreset === 'standard' ? 10.5 : 11.5;
+  // Calculate total vertical height of printing area for vertical centering on A4 (297mm)
+  // Header: 27.5mm, Table: totalTableH, Footer: 13.5mm (or 17.5mm with examiner name)
+  const headerHeight = 27.5;
+  const footerHeight = config.examinerName ? 17.5 : 13.5;
+  const totalContentH = headerHeight + totalTableH + footerHeight;
+  const startY = Math.max(8, Math.round(((297 - totalContentH) / 2) * 10) / 10);
+
+  // Typography sizes in pt matching official university format and on-screen preview
+  const fontMeta = fontSizePreset === 'extralarge' ? 12 : fontSizePreset === 'standard' ? 10 : 11;
   const fontTh1 = fontSizePreset === 'extralarge' ? 11 : fontSizePreset === 'standard' ? 9.5 : 10.5;
   const fontTh2 = fontSizePreset === 'extralarge' ? 10 : fontSizePreset === 'standard' ? 8.5 : 9.5;
-  const fontRoll = fontSizePreset === 'extralarge' ? 11.5 : fontSizePreset === 'standard' ? 10 : 11;
-  const fontFigures = fontSizePreset === 'extralarge' ? 14 : fontSizePreset === 'standard' ? 11.5 : 13;
+  const fontRoll = fontSizePreset === 'extralarge' ? 11.5 : fontSizePreset === 'standard' ? 9.5 : 10.5;
+  const fontFigures = fontSizePreset === 'extralarge' ? 14 : fontSizePreset === 'standard' ? 12 : 13;
   const fontWords = fontSizePreset === 'extralarge' ? 11 : fontSizePreset === 'standard' ? 9.5 : 10.5;
-  const fontFooter = fontSizePreset === 'extralarge' ? 12 : fontSizePreset === 'standard' ? 10.5 : 11.5;
+  const fontFooter = fontSizePreset === 'extralarge' ? 12 : fontSizePreset === 'standard' ? 10 : 11;
 
-  const colRollW = 36;
+  // Precise column widths totaling 92mm: Roll (38%) = 35mm, Figures (22%) = 20mm, Words (40%) = 37mm
+  const colRollW = 35;
   const colFigW = 20;
-  const colWordW = 35;
+  const colWordW = 37;
 
-  // Decide candidate slice for each column based on mode
-  const getEntriesForColumn = (colIndex: number): (MarkFoilStudentEntry | undefined)[] => {
+  // Helper to slice entries for each page and column
+  const getEntriesForColumn = (pageIdx: number, colIndex: number): (MarkFoilStudentEntry | undefined)[] => {
     if (mode === 'blank') {
       return [];
     }
     if (mode === 'continuous') {
-      const start = colIndex * totalRows;
+      const start = (pageIdx * 2 + colIndex) * totalRows;
       return entries.slice(start, start + totalRows);
     }
-    // 'twin' mode: both left & right show the same cohort (first totalRows)
-    return entries.slice(0, totalRows);
+    // 'twin' mode: both left & right show the same cohort for this page
+    const start = pageIdx * totalRows;
+    return entries.slice(start, start + totalRows);
   };
 
   const columns = [
@@ -189,154 +215,159 @@ export function generateMarkFoilPDF(
     { x: rightX, index: 1, label: 'Counterfoil' },
   ];
 
-  columns.forEach(({ x, index }) => {
-    const colEntries = getEntriesForColumn(index);
+  for (let pageIdx = 0; pageIdx < totalPages; pageIdx++) {
+    if (pageIdx > 0) {
+      doc.addPage('a4', 'portrait');
+    }
 
-    // 1. Header Metadata Section (Enlarged font size: 11.5pt Times)
-    doc.setFont('times', 'normal');
-    doc.setFontSize(fontMeta);
+    columns.forEach(({ x, index }) => {
+      const colEntries = getEntriesForColumn(pageIdx, index);
 
-    // Set / Year (top right of column)
-    const setYearText =
-      config.setNumber && config.date
-        ? `Set / Year ${config.setNumber} / ${config.date.slice(-4) || '2026'}`
-        : 'Set / Year..................';
-    doc.text(setYearText, x + colWidth - 1, topY + 4, { align: 'right' });
+      // 1. Header Metadata Section
+      doc.setFont('times', 'normal');
+      doc.setFontSize(fontMeta);
 
-    // Examination
-    const examText = config.examinationName
-      ? `EXAMINATION  ${config.examinationName}`
-      : 'EXAMINATION ..............................................';
-    doc.text(examText, x, topY + 9);
+      // Set / Year with multi-page indicator if more than 1 page
+      const pageIndicator = totalPages > 1 ? ` (Page ${pageIdx + 1} of ${totalPages})` : '';
+      const setYearText =
+        config.setNumber && config.date
+          ? `Set / Year ${config.setNumber} / ${config.date.slice(-4) || '2026'}${pageIndicator}`
+          : `Set / Year..................${pageIndicator}`;
+      doc.text(setYearText, x + colWidth - 1, startY + 3.8, { align: 'right' });
 
-    // Subject
-    const subjectText = config.subject
-      ? `Subject  ${config.subject}`
-      : 'Subject ....................................................';
-    doc.text(subjectText, x, topY + 14);
+      // Examination
+      const examText = config.examinationName
+        ? `EXAMINATION  ${config.examinationName}`
+        : 'EXAMINATION ..............................................';
+      doc.text(examText, x, startY + 8.5);
 
-    // Paper & Full Marks
-    const paperVal = config.paperName || '.............................';
-    const marksVal = config.fullMarks || '...............';
-    const paperFullMarksText = `Paper  ${paperVal}   Full Marks  ${marksVal}`;
-    doc.text(paperFullMarksText, x, topY + 19);
+      // Subject
+      const subjectText = config.subject
+        ? `Subject  ${config.subject}`
+        : 'Subject ....................................................';
+      doc.text(subjectText, x, startY + 13.5);
 
-    // Course No.
-    doc.setFont('times', 'bold');
-    const courseNoText = config.courseNo
-      ? `Course No.  ${config.courseNo}`
-      : 'Course No. .................................................';
-    doc.text(courseNoText, x, topY + 24);
+      // Paper & Full Marks
+      const paperVal = config.paperName || '.............................';
+      const marksVal = config.fullMarks || '...............';
+      const paperFullMarksText = `Paper  ${paperVal}   Full Marks  ${marksVal}`;
+      doc.text(paperFullMarksText, x, startY + 18.5);
 
-    // Solid horizontal line below Course No.
-    doc.setDrawColor(0, 0, 0);
-    doc.setLineWidth(0.4);
-    doc.line(x, topY + 26.5, x + colWidth, topY + 26.5);
+      // Course No.
+      doc.setFont('times', 'bold');
+      const courseNoText = config.courseNo
+        ? `Course No.  ${config.courseNo}`
+        : 'Course No. .................................................';
+      doc.text(courseNoText, x, startY + 23.5);
 
-    // 2. Marks Table (Enlarged headers and increased cell height)
-    const tableY = topY + 28.5;
+      // Solid horizontal line below Course No.
+      doc.setDrawColor(0, 0, 0);
+      doc.setLineWidth(0.4);
+      doc.line(x, startY + 25.5, x + colWidth, startY + 25.5);
 
-    // Outer table rectangle
-    doc.setLineWidth(0.35);
-    doc.rect(x, tableY, colWidth, totalTableH);
+      // 2. Marks Table
+      const tableY = startY + 27.5;
 
-    // Table Header horizontal lines
-    doc.line(x, tableY + th1Height, x + colWidth, tableY + th1Height);
-    doc.line(x, tableY + th1Height + th2Height, x + colWidth, tableY + th1Height + th2Height);
+      // Outer table rectangle
+      doc.setLineWidth(0.35);
+      doc.rect(x, tableY, colWidth, totalTableH);
 
-    // Table Header vertical lines
-    // Vertical line separating Roll/Code Number from Marks Obtained
-    doc.line(x + colRollW, tableY, x + colRollW, tableY + totalTableH);
-    // Vertical line separating In figures from In Words
-    doc.line(x + colRollW + colFigW, tableY + th1Height, x + colRollW + colFigW, tableY + totalTableH);
+      // Table Header horizontal lines
+      doc.line(x, tableY + th1Height, x + colWidth, tableY + th1Height);
+      doc.line(x, tableY + th1Height + th2Height, x + colWidth, tableY + th1Height + th2Height);
 
-    // Table Header text (Enlarged to 10.5pt and 9.5pt bold)
-    doc.setFont('times', 'bold');
-    doc.setFontSize(fontTh1);
-    doc.text('Roll / Code Number', x + colRollW / 2, tableY + 4.2, { align: 'center' });
-    doc.text('Marks Obtained', x + colRollW + (colFigW + colWordW) / 2, tableY + 4.2, { align: 'center' });
+      // Table Header vertical lines
+      doc.line(x + colRollW, tableY, x + colRollW, tableY + totalTableH);
+      doc.line(x + colRollW + colFigW, tableY + th1Height, x + colRollW + colFigW, tableY + totalTableH);
 
-    doc.setFontSize(fontTh2);
-    doc.text('In figures', x + colRollW + colFigW / 2, tableY + th1Height + 4.0, { align: 'center' });
-    doc.text('In Words', x + colRollW + colFigW + colWordW / 2, tableY + th1Height + 4.0, { align: 'center' });
+      // Table Header text
+      doc.setFont('times', 'bold');
+      doc.setFontSize(fontTh1);
+      doc.text('Roll / Code Number', x + colRollW / 2, tableY + 4.2, { align: 'center' });
+      doc.text('Marks Obtained', x + colRollW + (colFigW + colWordW) / 2, tableY + 4.2, { align: 'center' });
 
-    // Table Data Rows with increased height and enlarged typography
-    for (let r = 0; r < totalRows; r++) {
-      const curY = tableY + th1Height + th2Height + r * rowHeight;
+      doc.setFontSize(fontTh2);
+      doc.text('In figures', x + colRollW + colFigW / 2, tableY + th1Height + 4.0, { align: 'center' });
+      doc.text('In Words', x + colRollW + colFigW + colWordW / 2, tableY + th1Height + 4.0, { align: 'center' });
 
-      // Horizontal border for this row
-      doc.setLineWidth(0.2);
-      doc.line(x, curY + rowHeight, x + colWidth, curY + rowHeight);
+      // Table Data Rows
+      for (let r = 0; r < totalRows; r++) {
+        const curY = tableY + th1Height + th2Height + r * rowHeight;
 
-      // Populate student data if present with enlarged fonts and vertically centered positioning
-      const entry = colEntries[r];
-      if (entry) {
-        // Roll number (enlarged font size: 11pt)
-        doc.setFont('times', 'normal');
-        doc.setFontSize(fontRoll);
-        doc.text(String(entry.rollNumber || ''), x + 2, curY + (rowHeight * 0.67));
+        // Horizontal border for this row
+        doc.setLineWidth(0.2);
+        doc.line(x, curY + rowHeight, x + colWidth, curY + rowHeight);
 
-        // In figures (enlarged font size: 13pt bold)
-        doc.setFont('times', 'bold');
-        doc.setFontSize(fontFigures);
-        doc.text(String(entry.marksInFigures || ''), x + colRollW + colFigW / 2, curY + (rowHeight * 0.68), { align: 'center' });
+        // Populate student data if present
+        const entry = colEntries[r];
+        if (entry) {
+          // Roll number
+          doc.setFont('times', 'normal');
+          doc.setFontSize(fontRoll);
+          doc.text(String(entry.rollNumber || ''), x + 2, curY + (rowHeight * 0.67));
 
-        // In Words (enlarged font size: 10.5pt)
-        doc.setFont('times', 'normal');
-        const words = String(entry.marksInWords || '');
-        if (words) {
-          doc.setFontSize(fontWords);
-          const textWidth = doc.getTextWidth(words);
-          const maxAllowedW = colWordW - 3;
-          if (textWidth > maxAllowedW) {
-            // Auto scale font size down smoothly so it never overflows or clips
-            const scaledSize = Math.max(8.5, fontWords * (maxAllowedW / textWidth));
-            doc.setFontSize(scaledSize);
+          // In figures
+          doc.setFont('times', 'bold');
+          doc.setFontSize(fontFigures);
+          doc.text(String(entry.marksInFigures || ''), x + colRollW + colFigW / 2, curY + (rowHeight * 0.68), { align: 'center' });
+
+          // In Words
+          doc.setFont('times', 'normal');
+          const words = String(entry.marksInWords || '');
+          if (words) {
+            doc.setFontSize(fontWords);
+            const textWidth = doc.getTextWidth(words);
+            const maxAllowedW = colWordW - 3;
+            if (textWidth > maxAllowedW) {
+              const scaledSize = Math.max(8.5, fontWords * (maxAllowedW / textWidth));
+              doc.setFontSize(scaledSize);
+            }
+            doc.text(words, x + colRollW + colFigW + 2, curY + (rowHeight * 0.67));
           }
-          doc.text(words, x + colRollW + colFigW + 2, curY + (rowHeight * 0.67));
         }
       }
-    }
 
-    // 3. Footer Section below table (Enlarged font size: 11.5pt)
-    const footerY = tableY + totalTableH + 5.0;
-    doc.setFont('times', 'normal');
-    doc.setFontSize(fontFooter);
-    doc.text('Signature of the Examiner', x, footerY);
+      // 3. Footer Section below table
+      const footerY = tableY + totalTableH + 5.0;
+      doc.setFont('times', 'normal');
+      doc.setFontSize(fontFooter);
+      doc.text('Signature of the Examiner', x, footerY);
 
-    const dateStr = config.date
-      ? `Date  ${config.date}`
-      : 'Date .................................';
-    doc.text(dateStr, x, footerY + 5.0);
+      const dateStr = config.date
+        ? `Date  ${config.date}`
+        : 'Date .................................';
+      doc.text(dateStr, x, footerY + 4.5);
 
-    if (config.examinerName) {
-      doc.setFontSize(Math.max(9, fontFooter - 1.5));
-      doc.text(`(${config.examinerName})`, x, footerY + 9.5);
-    }
-  });
+      if (config.examinerName) {
+        doc.setFontSize(Math.max(9, fontFooter - 1.5));
+        doc.text(`(${config.examinerName})`, x, footerY + 9.0);
+      }
+    });
 
-  // Central dashed cut guideline between the two slips (stops cleanly above footer)
-  doc.setDrawColor(180, 180, 180);
-  doc.setLineWidth(0.2);
-  doc.setLineDashPattern([2, 2], 0);
-  doc.line(105, 6.5, 105, topY + 28.5 + totalTableH + 12);
+    // Central dashed cut guideline between the two slips (centered on page and height)
+    doc.setDrawColor(160, 160, 160);
+    doc.setLineWidth(0.25);
+    doc.setLineDashPattern([2, 2], 0);
+    doc.line(cutLineX, startY, cutLineX, startY + totalContentH);
+  }
 
-  // STRICT SINGLE PAGE SAFEGUARD: Remove any accidental page overflow
-  while (doc.getNumberOfPages() > 1) {
+  // Remove any accidental extra pages beyond totalPages
+  while (doc.getNumberOfPages() > totalPages) {
     doc.deletePage(doc.getNumberOfPages());
   }
 
+  const pagesSuffix = totalPages > 1 ? `_${totalPages}pages` : '';
   const safeFilename =
     mode === 'blank'
       ? `Blank_Mark_Foil_${(config.courseNo || 'EXAM').replace(/\s+/g, '_')}.pdf`
-      : `Mark_Foil_${(config.courseNo || 'EXAM').replace(/\s+/g, '_')}_${(config.setNumber || 'Set01').replace(/\s+/g, '_')}.pdf`;
+      : `Mark_Foil_${(config.courseNo || 'EXAM').replace(/\s+/g, '_')}_${(config.setNumber || 'Set01').replace(/\s+/g, '_')}${pagesSuffix}.pdf`;
 
   doc.save(safeFilename);
 }
 
 /**
- * Generates an authentic Microsoft Word (.doc) document with enlarged cell height
- * and enlarged fonts strictly configured to fit on a SINGLE PAGE WITHOUT SPILLOVER.
+ * Generates an authentic Microsoft Word (.doc) document centered vertically and horizontally
+ * on A4 page with identical typography and layout to preview and printed mark foil.
  */
 export function generateMarkFoilWordDocument(
   config: MarkFoilConfig,
@@ -353,32 +384,36 @@ export function generateMarkFoilWordDocument(
   const cellHeightPreset = options?.cellHeightPreset || config.cellHeightPreset || 'generous';
   const fontSizePreset = options?.fontSizePreset || config.fontSizePreset || 'large';
 
-  // Calibrate generous row height in pt while guaranteeing single page in MS Word
-  // Available height in Word on A4 (841.9pt) with 12pt top/bottom margins is ~818pt.
-  // 25 rows * 25pt = 625pt + 140pt header/footer = 765pt < 818pt (fits strictly on page 1 of 1).
-  const baseTargetPt = cellHeightPreset === 'extra' ? 640 : cellHeightPreset === 'standard' ? 570 : 625;
-  const rowPt = Math.max(18, Math.min(30, Math.floor(baseTargetPt / totalRows)));
+  const totalPages = calculateMarkFoilPages(entries.length, mode, totalRows);
 
-  const fontMeta = fontSizePreset === 'extralarge' ? '12pt' : fontSizePreset === 'standard' ? '10.5pt' : '11.5pt';
-  const fontLineHeight = fontSizePreset === 'extralarge' ? '14.5pt' : fontSizePreset === 'standard' ? '13pt' : '14pt';
+  const baseTargetPt = cellHeightPreset === 'extra' ? 620 : cellHeightPreset === 'standard' ? 550 : 585;
+  const rowPt = Math.max(18, Math.min(28, Math.floor(baseTargetPt / totalRows)));
+
+  const fontMeta = fontSizePreset === 'extralarge' ? '12pt' : fontSizePreset === 'standard' ? '10pt' : '11pt';
+  const fontLineHeight = fontSizePreset === 'extralarge' ? '15pt' : fontSizePreset === 'standard' ? '13pt' : '14pt';
   const fontTh1 = fontSizePreset === 'extralarge' ? '11pt' : fontSizePreset === 'standard' ? '9.5pt' : '10.5pt';
   const fontTh2 = fontSizePreset === 'extralarge' ? '10pt' : fontSizePreset === 'standard' ? '8.5pt' : '9.5pt';
-  const fontRoll = fontSizePreset === 'extralarge' ? '11.5pt' : fontSizePreset === 'standard' ? '10pt' : '11pt';
-  const fontFigures = fontSizePreset === 'extralarge' ? '14pt' : fontSizePreset === 'standard' ? '11.5pt' : '13pt';
+  const fontRoll = fontSizePreset === 'extralarge' ? '11.5pt' : fontSizePreset === 'standard' ? '9.5pt' : '10.5pt';
+  const fontFigures = fontSizePreset === 'extralarge' ? '14pt' : fontSizePreset === 'standard' ? '12pt' : '13pt';
   const fontWords = fontSizePreset === 'extralarge' ? '11pt' : fontSizePreset === 'standard' ? '9.5pt' : '10.5pt';
-  const fontFooter = fontSizePreset === 'extralarge' ? '12pt' : fontSizePreset === 'standard' ? '10.5pt' : '11.5pt';
+  const fontFooter = fontSizePreset === 'extralarge' ? '12pt' : fontSizePreset === 'standard' ? '10pt' : '11pt';
 
-  const getEntriesForColumn = (colIndex: number): (MarkFoilStudentEntry | undefined)[] => {
+  // Calculate dynamic vertical margin for Word to center content vertically on A4 (841.9pt height)
+  const estimatedContentPt = 80 + 34 + (totalRows * rowPt) + (config.examinerName ? 55 : 42);
+  const vMarginPt = Math.max(18, Math.floor((841.9 - estimatedContentPt) / 2));
+
+  const getEntriesForColumn = (pageIdx: number, colIndex: number): (MarkFoilStudentEntry | undefined)[] => {
     if (mode === 'blank') return [];
     if (mode === 'continuous') {
-      const start = colIndex * totalRows;
+      const start = (pageIdx * 2 + colIndex) * totalRows;
       return entries.slice(start, start + totalRows);
     }
-    return entries.slice(0, totalRows);
+    const start = pageIdx * totalRows;
+    return entries.slice(start, start + totalRows);
   };
 
-  const renderSingleSlipHtml = (colIndex: number): string => {
-    const colEntries = getEntriesForColumn(colIndex);
+  const renderSingleSlipHtml = (pageIdx: number, colIndex: number): string => {
+    const colEntries = getEntriesForColumn(pageIdx, colIndex);
     const rowsHtml: string[] = [];
 
     for (let r = 0; r < totalRows; r++) {
@@ -389,23 +424,24 @@ export function generateMarkFoilWordDocument(
 
       rowsHtml.push(`
         <tr style="height: ${rowPt}pt; mso-height-rule: exactly; page-break-inside: avoid;">
-          <td style="border: 1pt solid #000000; padding: 3pt 5pt; font-family: 'Times New Roman', serif; font-size: ${fontRoll}; font-weight: 500; text-align: left; width: 38%; vertical-align: middle; mso-line-height-rule: exactly; line-height: 13pt;">
+          <td style="border: 1pt solid #000000; padding: 2.5pt 4pt; font-family: 'Times New Roman', serif; font-size: ${fontRoll}; font-weight: 500; text-align: left; width: 38%; vertical-align: middle; mso-line-height-rule: exactly; line-height: 13pt;">
             ${roll}
           </td>
-          <td style="border: 1pt solid #000000; padding: 3pt 4pt; font-family: 'Times New Roman', serif; font-size: ${fontFigures}; font-weight: bold; text-align: center; width: 22%; vertical-align: middle; mso-line-height-rule: exactly; line-height: 14pt;">
+          <td style="border: 1pt solid #000000; padding: 2.5pt 3pt; font-family: 'Times New Roman', serif; font-size: ${fontFigures}; font-weight: bold; text-align: center; width: 22%; vertical-align: middle; mso-line-height-rule: exactly; line-height: 14pt;">
             ${figures}
           </td>
-          <td style="border: 1pt solid #000000; padding: 3pt 5pt; font-family: 'Times New Roman', serif; font-size: ${fontWords}; font-weight: 500; text-align: left; width: 40%; text-transform: uppercase; vertical-align: middle; mso-line-height-rule: exactly; line-height: 12pt;">
+          <td style="border: 1pt solid #000000; padding: 2.5pt 4pt; font-family: 'Times New Roman', serif; font-size: ${fontWords}; font-weight: 500; text-align: left; width: 40%; text-transform: uppercase; vertical-align: middle; mso-line-height-rule: exactly; line-height: 12pt;">
             ${words}
           </td>
         </tr>
       `);
     }
 
+    const pageIndicator = totalPages > 1 ? ` (Page ${pageIdx + 1} of ${totalPages})` : '';
     const setYearText =
       config.setNumber && config.date
-        ? `Set / Year ${config.setNumber} / ${config.date.slice(-4) || '2026'}`
-        : 'Set / Year..................';
+        ? `Set / Year ${config.setNumber} / ${config.date.slice(-4) || '2026'}${pageIndicator}`
+        : `Set / Year..................${pageIndicator}`;
 
     const examText = config.examinationName
       ? `EXAMINATION  ${config.examinationName}`
@@ -429,7 +465,7 @@ export function generateMarkFoilWordDocument(
 
     return `
       <div style="font-family: 'Times New Roman', Times, serif; color: #000000; margin: 0; padding: 0;">
-        <!-- Header with enlarged font size -->
+        <!-- Header -->
         <div style="text-align: right; font-size: ${fontMeta}; margin-bottom: 2pt; mso-line-height-rule: exactly; line-height: ${fontLineHeight};">
           ${setYearText}
         </div>
@@ -442,14 +478,14 @@ export function generateMarkFoilWordDocument(
         <div style="font-size: ${fontMeta}; margin-bottom: 2pt; mso-line-height-rule: exactly; line-height: ${fontLineHeight};">
           ${paperMarksText}
         </div>
-        <div style="font-size: ${fontMeta}; margin-bottom: 3.5pt; mso-line-height-rule: exactly; line-height: ${fontLineHeight};">
+        <div style="font-size: ${fontMeta}; margin-bottom: 3pt; mso-line-height-rule: exactly; line-height: ${fontLineHeight};">
           ${courseNoText}
         </div>
 
         <!-- Solid rule under course no -->
         <div style="border-bottom: 1.5pt solid #000000; margin-bottom: 3.5pt; width: 100%; height: 1pt;"></div>
 
-        <!-- Table with increased cell heights and enlarged fonts -->
+        <!-- Marks Table -->
         <table style="width: 100%; border-collapse: collapse; border: 1.5pt solid #000000; margin-bottom: 5pt; table-layout: fixed; page-break-inside: avoid;">
           <thead>
             <tr style="height: 18pt; mso-height-rule: exactly; page-break-inside: avoid;">
@@ -474,7 +510,7 @@ export function generateMarkFoilWordDocument(
           </tbody>
         </table>
 
-        <!-- Footer with enlarged font size -->
+        <!-- Footer -->
         <div style="font-size: ${fontFooter}; margin-top: 4pt; mso-line-height-rule: exactly; line-height: 15pt;">
           <div>Signature of the Examiner</div>
           <div>${dateStr}</div>
@@ -483,6 +519,25 @@ export function generateMarkFoilWordDocument(
       </div>
     `;
   };
+
+  const pagesHtml: string[] = [];
+  for (let p = 0; p < totalPages; p++) {
+    pagesHtml.push(`
+      <div class="Section1" style="${p > 0 ? 'page-break-before: always; mso-break-type: section-break;' : ''}">
+        <table align="center" style="width: 100%; max-width: 535pt; margin: 0 auto; border-collapse: collapse; border: none; table-layout: fixed; page-break-inside: avoid;">
+          <tr>
+            <td style="width: 48%; vertical-align: top; padding-right: 8pt;">
+              ${renderSingleSlipHtml(p, 0)}
+            </td>
+            <td style="width: 4%; border-left: 1pt dashed #888888; vertical-align: top; text-align: center;">&nbsp;</td>
+            <td style="width: 48%; vertical-align: top; padding-left: 8pt;">
+              ${renderSingleSlipHtml(p, 1)}
+            </td>
+          </tr>
+        </table>
+      </div>
+    `);
+  }
 
   const wordDocumentContent = `
     <html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'>
@@ -501,14 +556,17 @@ export function generateMarkFoilWordDocument(
       <style>
         @page Section1 {
           size: 595.3pt 841.9pt;
-          margin: 12pt 16pt 10pt 16pt;
+          margin: ${vMarginPt}pt 24pt ${vMarginPt}pt 24pt;
           mso-header-margin: 0pt;
           mso-footer-margin: 0pt;
           mso-paper-source: 0;
+          mso-page-orientation: portrait;
+          mso-vertical-page-align: middle;
         }
         div.Section1 {
           page: Section1;
           mso-pagination: none;
+          mso-vertical-page-align: middle;
         }
         * {
           box-sizing: border-box;
@@ -539,19 +597,7 @@ export function generateMarkFoilWordDocument(
       </style>
     </head>
     <body>
-      <div class="Section1">
-        <table style="width: 100%; border-collapse: collapse; border: none; table-layout: fixed; page-break-inside: avoid;">
-          <tr>
-            <td style="width: 48%; vertical-align: top; padding-right: 10pt;">
-              ${renderSingleSlipHtml(0)}
-            </td>
-            <td style="width: 4%; border-left: 1pt dashed #999999; vertical-align: top;">&nbsp;</td>
-            <td style="width: 48%; vertical-align: top; padding-left: 10pt;">
-              ${renderSingleSlipHtml(1)}
-            </td>
-          </tr>
-        </table>
-      </div>
+      ${pagesHtml.join('')}
     </body>
     </html>
   `;
@@ -562,10 +608,11 @@ export function generateMarkFoilWordDocument(
   const url = URL.createObjectURL(blob);
   const link = document.createElement('a');
   link.href = url;
+  const pagesSuffix = totalPages > 1 ? `_${totalPages}pages` : '';
   const safeFilename =
     mode === 'blank'
       ? `Blank_Mark_Foil_${(config.courseNo || 'EXAM').replace(/\s+/g, '_')}.doc`
-      : `Mark_Foil_${(config.courseNo || 'EXAM').replace(/\s+/g, '_')}_${(config.setNumber || 'Set01').replace(/\s+/g, '_')}.doc`;
+      : `Mark_Foil_${(config.courseNo || 'EXAM').replace(/\s+/g, '_')}_${(config.setNumber || 'Set01').replace(/\s+/g, '_')}${pagesSuffix}.doc`;
 
   link.setAttribute('download', safeFilename);
   document.body.appendChild(link);
@@ -575,8 +622,9 @@ export function generateMarkFoilWordDocument(
 }
 
 /**
- * Triggers sharp browser print window / Save as PDF strictly fitting onto a
- * SINGLE A4 PORTRAIT PAGE with increased cell height and enlarged font sizes
+ * Triggers sharp browser print window / Save as PDF.
+ * Centers the printing area both vertically and horizontally on A4 portrait,
+ * matching the on-screen preview typography and slip format.
  */
 export function printMarkFoil(
   config: MarkFoilConfig,
@@ -593,29 +641,31 @@ export function printMarkFoil(
   const cellHeightPreset = options?.cellHeightPreset || config.cellHeightPreset || 'generous';
   const fontSizePreset = options?.fontSizePreset || config.fontSizePreset || 'large';
 
-  // Calibrate generous row height in px (e.g. 31px for 25 rows) while strictly preventing 2nd page printing
-  const baseTargetPx = cellHeightPreset === 'extra' ? 790 : cellHeightPreset === 'standard' ? 700 : 765;
-  const rowPx = Math.max(24, Math.min(38, Math.floor(baseTargetPx / totalRows)));
+  const totalPages = calculateMarkFoilPages(entries.length, mode, totalRows);
 
-  const fontMeta = fontSizePreset === 'extralarge' ? '12pt' : fontSizePreset === 'standard' ? '10.5pt' : '11.5pt';
+  const baseTargetPx = cellHeightPreset === 'extra' ? 760 : cellHeightPreset === 'standard' ? 670 : 720;
+  const rowPx = Math.max(22, Math.min(36, Math.floor(baseTargetPx / totalRows)));
+
+  const fontMeta = fontSizePreset === 'extralarge' ? '12pt' : fontSizePreset === 'standard' ? '10pt' : '11pt';
   const fontTh1 = fontSizePreset === 'extralarge' ? '11pt' : fontSizePreset === 'standard' ? '9.5pt' : '10.5pt';
   const fontTh2 = fontSizePreset === 'extralarge' ? '10pt' : fontSizePreset === 'standard' ? '8.5pt' : '9.5pt';
-  const fontRoll = fontSizePreset === 'extralarge' ? '11.5pt' : fontSizePreset === 'standard' ? '10pt' : '11pt';
-  const fontFigures = fontSizePreset === 'extralarge' ? '14pt' : fontSizePreset === 'standard' ? '11.5pt' : '13pt';
+  const fontRoll = fontSizePreset === 'extralarge' ? '11.5pt' : fontSizePreset === 'standard' ? '9.5pt' : '10.5pt';
+  const fontFigures = fontSizePreset === 'extralarge' ? '14pt' : fontSizePreset === 'standard' ? '12pt' : '13pt';
   const fontWords = fontSizePreset === 'extralarge' ? '11pt' : fontSizePreset === 'standard' ? '9.5pt' : '10.5pt';
-  const fontFooter = fontSizePreset === 'extralarge' ? '12pt' : fontSizePreset === 'standard' ? '10.5pt' : '11.5pt';
+  const fontFooter = fontSizePreset === 'extralarge' ? '12pt' : fontSizePreset === 'standard' ? '10pt' : '11pt';
 
-  const getEntriesForColumn = (colIndex: number): (MarkFoilStudentEntry | undefined)[] => {
+  const getEntriesForColumn = (pageIdx: number, colIndex: number): (MarkFoilStudentEntry | undefined)[] => {
     if (mode === 'blank') return [];
     if (mode === 'continuous') {
-      const start = colIndex * totalRows;
+      const start = (pageIdx * 2 + colIndex) * totalRows;
       return entries.slice(start, start + totalRows);
     }
-    return entries.slice(0, totalRows);
+    const start = pageIdx * totalRows;
+    return entries.slice(start, start + totalRows);
   };
 
-  const renderFoilSlipHtml = (colIndex: number) => {
-    const colEntries = getEntriesForColumn(colIndex);
+  const renderFoilSlipHtml = (pageIdx: number, colIndex: number) => {
+    const colEntries = getEntriesForColumn(pageIdx, colIndex);
     const rowsHtml: string[] = [];
 
     for (let r = 0; r < totalRows; r++) {
@@ -633,10 +683,11 @@ export function printMarkFoil(
       `);
     }
 
+    const pageIndicator = totalPages > 1 ? ` (Page ${pageIdx + 1} of ${totalPages})` : '';
     const setYearText =
       config.setNumber && config.date
-        ? `Set / Year ${config.setNumber} / ${config.date.slice(-4) || '2026'}`
-        : 'Set / Year..................';
+        ? `Set / Year ${config.setNumber} / ${config.date.slice(-4) || '2026'}${pageIndicator}`
+        : `Set / Year..................${pageIndicator}`;
 
     const examText = config.examinationName
       ? `EXAMINATION  ${config.examinationName}`
@@ -660,7 +711,7 @@ export function printMarkFoil(
 
     return `
       <div class="foil-sheet">
-        <!-- Header with enlarged font size -->
+        <!-- Header -->
         <div class="foil-top-right">${setYearText}</div>
         <div class="foil-meta-line">${examText}</div>
         <div class="foil-meta-line">${subjectText}</div>
@@ -670,7 +721,7 @@ export function printMarkFoil(
         <!-- Solid Rule -->
         <div class="foil-rule"></div>
 
-        <!-- Marks Table with increased cell height and enlarged fonts -->
+        <!-- Marks Table -->
         <table class="marks-table">
           <thead>
             <tr>
@@ -687,7 +738,7 @@ export function printMarkFoil(
           </tbody>
         </table>
 
-        <!-- Footer with enlarged font size -->
+        <!-- Footer -->
         <div class="foil-footer">
           <div>Signature of the Examiner</div>
           <div>${dateStr}</div>
@@ -696,6 +747,19 @@ export function printMarkFoil(
       </div>
     `;
   };
+
+  const pagesHtml: string[] = [];
+  for (let p = 0; p < totalPages; p++) {
+    pagesHtml.push(`
+      <div class="mark-foil-page">
+        <div class="foils-container">
+          ${renderFoilSlipHtml(p, 0)}
+          <div class="cut-line"></div>
+          ${renderFoilSlipHtml(p, 1)}
+        </div>
+      </div>
+    `);
+  }
 
   const printWindow = window.open('', '_blank');
   if (!printWindow) {
@@ -712,7 +776,7 @@ export function printMarkFoil(
       <style>
         @page {
           size: A4 portrait;
-          margin: 5mm 6mm 4mm 6mm;
+          margin: 0;
         }
         * {
           box-sizing: border-box;
@@ -722,20 +786,16 @@ export function printMarkFoil(
           padding: 0;
         }
         html, body {
-          height: 100%;
-          max-height: 297mm;
           margin: 0;
-          padding: 2px;
+          padding: 0;
           font-family: 'Times New Roman', Times, serif;
           color: #000000;
           background: #ffffff;
-          overflow: hidden;
         }
         .no-print {
           background: #0f172a;
           color: #fff;
           padding: 8px 14px;
-          margin-bottom: 6px;
           display: flex;
           justify-content: space-between;
           align-items: center;
@@ -748,10 +808,14 @@ export function printMarkFoil(
           color: #000;
           border: none;
           font-weight: bold;
-          padding: 5px 14px;
+          padding: 6px 16px;
           border-radius: 4px;
           cursor: pointer;
           font-size: 12px;
+          transition: 0.2s;
+        }
+        .print-btn:hover {
+          background: #fbbf24;
         }
         .single-page-badge {
           background: #059669;
@@ -762,27 +826,39 @@ export function printMarkFoil(
           font-weight: bold;
           margin-left: 8px;
         }
+        .multi-page-badge {
+          background: #2563eb;
+          color: white;
+          padding: 2px 8px;
+          border-radius: 4px;
+          font-size: 10px;
+          font-weight: bold;
+          margin-left: 8px;
+        }
         .foils-container {
           display: flex;
           justify-content: space-between;
-          width: 100%;
-          gap: 14px;
+          align-items: stretch;
+          width: 190mm;
+          max-width: 190mm;
+          gap: 12px;
           page-break-inside: avoid;
-          page-break-after: avoid;
         }
         .foil-sheet {
           flex: 1;
-          max-width: 48.5%;
+          max-width: 48%;
+          font-family: 'Times New Roman', Times, serif;
         }
         .cut-line {
           width: 1px;
-          border-left: 1px dashed #999;
-          height: 100%;
+          border-left: 1px dashed #777;
+          align-self: stretch;
         }
         .foil-top-right {
           text-align: right;
           font-size: ${fontMeta};
           margin-bottom: 2px;
+          line-height: 1.25;
         }
         .foil-meta-line {
           font-size: ${fontMeta};
@@ -791,49 +867,54 @@ export function printMarkFoil(
         }
         .foil-rule {
           border-bottom: 1.5px solid #000000;
-          margin: 3.5px 0 3.5px 0;
+          margin: 3.5px 0 4.5px 0;
           width: 100%;
         }
         table.marks-table {
           width: 100%;
+          table-layout: fixed;
           border-collapse: collapse;
           border: 1.5px solid #000000;
           page-break-inside: avoid;
         }
         table.marks-table th, table.marks-table td {
           border: 1px solid #000000;
-          padding: 3px 5px;
         }
         table.marks-table th {
           font-weight: bold;
           text-align: center;
           vertical-align: middle;
           font-size: ${fontTh1};
+          padding: 2.5px 4px;
         }
-        .th-roll {
+        .th-roll, .col-roll {
           width: 38%;
         }
         .th-marks {
           width: 62%;
         }
-        .th-figures {
+        .th-figures, .col-figures {
           width: 22%;
-          font-size: ${fontTh2};
         }
-        .th-words {
+        .th-words, .col-words {
           width: 40%;
+        }
+        .th-figures, .th-words {
           font-size: ${fontTh2};
+          padding: 2px 3px;
         }
         .col-roll {
           text-align: left;
           font-size: ${fontRoll};
           font-weight: 500;
+          padding: 2px 5px;
           vertical-align: middle;
         }
         .col-figures {
           text-align: center;
           font-weight: bold;
           font-size: ${fontFigures};
+          padding: 2px 3px;
           vertical-align: middle;
         }
         .col-words {
@@ -841,6 +922,7 @@ export function printMarkFoil(
           font-size: ${fontWords};
           font-weight: 500;
           text-transform: uppercase;
+          padding: 2px 5px;
           vertical-align: middle;
         }
         .foil-footer {
@@ -852,19 +934,68 @@ export function printMarkFoil(
           font-size: 10pt;
           color: #444;
         }
+        @media screen {
+          body {
+            background: #e2e8f0;
+            padding: 20px 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+          }
+          .no-print {
+            width: 210mm;
+            margin-bottom: 16px;
+          }
+          .mark-foil-page {
+            width: 210mm;
+            min-height: 297mm;
+            background: #ffffff;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.18);
+            margin-bottom: 24px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            box-sizing: border-box;
+            padding: 16mm 10mm;
+          }
+        }
         @media print {
           .no-print {
             display: none !important;
           }
           html, body {
-            padding: 0;
-            margin: 0;
-            height: 100%;
-            overflow: hidden;
+            padding: 0 !important;
+            margin: 0 !important;
+            width: 210mm !important;
+            height: 297mm !important;
+            background: #ffffff !important;
+          }
+          .mark-foil-page {
+            width: 210mm !important;
+            height: 297mm !important;
+            max-height: 297mm !important;
+            page-break-after: always;
+            break-after: page;
+            display: flex !important;
+            flex-direction: column !important;
+            justify-content: center !important;
+            align-items: center !important;
+            box-sizing: border-box !important;
+            padding: 0 10mm !important;
+            margin: 0 auto !important;
+            overflow: hidden !important;
+          }
+          .mark-foil-page:last-child {
+            page-break-after: avoid !important;
+            break-after: avoid !important;
           }
           .foils-container {
-            page-break-inside: avoid;
-            page-break-after: avoid;
+            width: 190mm !important;
+            max-width: 190mm !important;
+            margin: 0 auto !important;
+            page-break-inside: avoid !important;
+            page-break-after: avoid !important;
           }
         }
       </style>
@@ -873,26 +1004,26 @@ export function printMarkFoil(
       <div class="no-print">
         <div>
           <strong>Official Examination Mark Foil (Dual-Slip Format)</strong>
-          <span class="single-page-badge">FITS 1 SINGLE PAGE GUARANTEED</span>
-          <span style="font-size: 11px; color: #94a3b8; margin-left: 10px;">A4 Portrait &bull; Page 1 of 1</span>
+          <span class="${totalPages > 1 ? 'multi-page-badge' : 'single-page-badge'}">
+            ${totalPages > 1 ? `${totalPages} PAGES GENERATED` : 'FITS 1 SINGLE PAGE'}
+          </span>
+          <span style="font-size: 11px; color: #94a3b8; margin-left: 10px;">
+            A4 Portrait &bull; Candidates: ${entries.length} &bull; ${totalPages} Sheet${totalPages > 1 ? 's' : ''} (${mode === 'twin' ? 'Twin Slips' : mode === 'continuous' ? 'Continuous' : 'Blank'})
+          </span>
         </div>
         <button class="print-btn" onclick="window.print()">
-          Print / Save as PDF
+          Print / Save as PDF (${totalPages} Page${totalPages > 1 ? 's' : ''})
         </button>
       </div>
 
-      <div class="foils-container">
-        ${renderFoilSlipHtml(0)}
-        <div class="cut-line"></div>
-        ${renderFoilSlipHtml(1)}
-      </div>
+      ${pagesHtml.join('')}
     </body>
     </html>
   `);
 
   printWindow.document.close();
-  printWindow.focus();
 }
+
 
 /**
  * Exports CSV with Roll/Code Number, In Figures, In Words
