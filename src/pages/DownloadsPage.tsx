@@ -48,9 +48,13 @@ export const DownloadsPage: React.FC<DownloadsPageProps> = ({
   const [localDownloads, setLocalDownloads] = useState<DownloadItem[]>(() => {
     try {
       const saved = localStorage.getItem('dept_downloads');
-      if (saved) return JSON.parse(saved);
+      if (saved) {
+        const parsed: DownloadItem[] = JSON.parse(saved);
+        const defaultIds = new Set(['dl-1', 'dl-2', 'dl-3', 'dl-4', 'dl-5', 'dl-6', 'dl-7', 'dl-8', 'dl-9']);
+        return parsed.filter((d) => !defaultIds.has(d.id));
+      }
     } catch {}
-    return initialDownloads;
+    return [];
   });
 
   const rawDownloadsList = propDownloads && propDownloads.length > 0 ? propDownloads : localDownloads;

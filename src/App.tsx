@@ -219,9 +219,14 @@ function AppContent() {
   const [downloads, setDownloads] = useState<DownloadItem[]>(() => {
     try {
       const saved = localStorage.getItem('dept_downloads');
-      return saved ? JSON.parse(saved) : initialDownloads;
+      if (saved) {
+        const parsed: DownloadItem[] = JSON.parse(saved);
+        const defaultIds = new Set(['dl-1', 'dl-2', 'dl-3', 'dl-4', 'dl-5', 'dl-6', 'dl-7', 'dl-8', 'dl-9']);
+        return parsed.filter((d) => !defaultIds.has(d.id));
+      }
+      return [];
     } catch {
-      return initialDownloads;
+      return [];
     }
   });
   const [inquiries, setInquiries] = useState<ContactMessage[]>([]);

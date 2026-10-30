@@ -211,20 +211,13 @@ export function subscribeToFaculty(
       q,
       async (snapshot) => {
         if (snapshot.empty) {
-          if (isDatabaseSeededSync()) {
-            callback([]);
-            return;
-          }
-          const seeded = await checkIsSeeded();
-          if (seeded) {
-            callback([]);
-            return;
-          }
-          callback(initialFaculty);
-          ensureDatabaseSeeded();
+          callback([]);
           return;
         }
-        const data = snapshot.docs.map((d) => ({ id: d.id, ...d.data() } as Faculty));
+        const defaultIds = new Set(['fac-1', 'fac-2', 'fac-3', 'fac-4', 'fac-5', 'fac-6']);
+        const data = snapshot.docs
+          .map((d) => ({ id: d.id, ...d.data() } as Faculty))
+          .filter((f) => !defaultIds.has(f.id));
         data.sort((a, b) => (a.order || 99) - (b.order || 99));
         callback(data);
       },
@@ -887,20 +880,13 @@ export function subscribeToCommittees(
       q,
       async (snapshot) => {
         if (snapshot.empty) {
-          if (isDatabaseSeededSync()) {
-            callback([]);
-            return;
-          }
-          const seeded = await checkIsSeeded();
-          if (seeded) {
-            callback([]);
-            return;
-          }
-          callback(initialCommittees);
-          ensureDatabaseSeeded();
+          callback([]);
           return;
         }
-        const data = snapshot.docs.map((d) => ({ id: d.id, ...d.data() } as Committee));
+        const defaultIds = new Set(['com-1', 'com-2', 'com-3', 'com-4', 'com-5', 'com-6', 'com-7', 'com-8']);
+        const data = snapshot.docs
+          .map((d) => ({ id: d.id, ...d.data() } as Committee))
+          .filter((c) => !defaultIds.has(c.id));
         callback(data);
       },
       (error) => {
@@ -948,20 +934,13 @@ export function subscribeToContacts(
       q,
       async (snapshot) => {
         if (snapshot.empty) {
-          if (isDatabaseSeededSync()) {
-            callback([]);
-            return;
-          }
-          const seeded = await checkIsSeeded();
-          if (seeded) {
-            callback([]);
-            return;
-          }
-          callback(initialContacts);
-          ensureDatabaseSeeded();
+          callback([]);
           return;
         }
-        const data = snapshot.docs.map((d) => ({ id: d.id, ...d.data() } as ImportantContact));
+        const defaultIds = new Set(['cnt-1', 'cnt-2', 'cnt-3', 'cnt-4', 'cnt-5', 'cnt-6', 'cnt-7', 'cnt-8']);
+        const data = snapshot.docs
+          .map((d) => ({ id: d.id, ...d.data() } as ImportantContact))
+          .filter((c) => !defaultIds.has(c.id));
         data.sort((a, b) => (a.order || 99) - (b.order || 99));
         callback(data);
       },
@@ -1223,22 +1202,20 @@ export function subscribeToTimeTable(
       q,
       async (snapshot) => {
         if (snapshot.empty) {
-          if (isDatabaseSeededSync()) {
-            callback([]);
-            return;
-          }
-          const seeded = await checkIsSeeded();
-          if (seeded) {
-            callback([]);
-            return;
-          }
-          callback(initialTimeTable);
-          ensureDatabaseSeeded();
+          callback([]);
           return;
         }
+        const defaultTtIds = new Set([
+          'tt-m1-nep1', 'tt-m2-nep1', 'tt-m3-nep3', 'tt-m4-nep5', 'tt-m5-pg1', 'tt-m7-pg3-lab',
+          'tt-t1-nep1', 'tt-t2-nep3', 'tt-t3-aedp1', 'tt-t5-nep5-lab',
+          'tt-w1-pg1', 'tt-w2-nep1', 'tt-w4-nep3', 'tt-w6-pg3',
+          'tt-th1-nep1', 'tt-th3-nep5', 'tt-th5-pg1',
+          'tt-f1-nep1', 'tt-f3-pg3', 'tt-f6-sem-all',
+          'tt-s1-nep3', 'tt-s3-pg1',
+        ]);
         const data = snapshot.docs
           .map((d) => ({ id: d.id, ...d.data() } as any))
-          .filter((d) => !d.isDeleted) as TimeTableSlot[];
+          .filter((d) => !d.isDeleted && !defaultTtIds.has(d.id)) as TimeTableSlot[];
         callback(data);
       },
       (error) => {
@@ -1363,20 +1340,17 @@ export function subscribeToSyllabuses(
       q,
       async (snapshot) => {
         if (snapshot.empty) {
-          if (isDatabaseSeededSync()) {
-            callback([]);
-            return;
-          }
-          const seeded = await checkIsSeeded();
-          if (seeded) {
-            callback([]);
-            return;
-          }
-          callback(initialSyllabus);
-          ensureDatabaseSeeded();
+          callback([]);
           return;
         }
-        const data = snapshot.docs.map((d) => ({ id: d.id, ...d.data() } as Syllabus));
+        const data = snapshot.docs
+          .map((d) => ({ id: d.id, ...d.data() } as Syllabus))
+          .filter(
+            (s) =>
+              !s.id.startsWith('syl-nep-') &&
+              !s.id.startsWith('syl-aedp-') &&
+              !s.id.startsWith('syl-pg-')
+          );
         callback(data);
       },
       (error) => {
@@ -1426,20 +1400,20 @@ export function subscribeToGallery(
       q,
       async (snapshot) => {
         if (snapshot.empty) {
-          if (isDatabaseSeededSync()) {
-            callback([]);
-            return;
-          }
-          const seeded = await checkIsSeeded();
-          if (seeded) {
-            callback([]);
-            return;
-          }
-          callback(initialGallery);
-          ensureDatabaseSeeded();
+          callback([]);
           return;
         }
-        const data = snapshot.docs.map((d) => ({ id: d.id, ...d.data() } as GalleryPhoto));
+        const defaultPhotoIds = new Set(['gal-1', 'gal-2', 'gal-3', 'gal-4', 'gal-5', 'gal-6', 'gal-7', 'gal-8']);
+        const defaultEventIds = new Set([
+          'event-nmd-2025',
+          'event-induction-2026',
+          'event-seminar-2025',
+          'event-latex-workshop-2025',
+          'event-piday-2025',
+        ]);
+        const data = snapshot.docs
+          .map((d) => ({ id: d.id, ...d.data() } as GalleryPhoto))
+          .filter((g) => !defaultPhotoIds.has(g.id) && !defaultEventIds.has(g.eventId || ''));
         // Sort by order or createdAt descending
         data.sort((a, b) => {
           if (a.order && b.order) return a.order - b.order;
@@ -1493,21 +1467,24 @@ export function subscribeToDownloads(
     return onSnapshot(
       q,
       async (snapshot) => {
+        const defaultIds = new Set(['dl-1', 'dl-2', 'dl-3', 'dl-4', 'dl-5', 'dl-6', 'dl-7', 'dl-8', 'dl-9']);
         if (snapshot.empty) {
           try {
             const saved = localStorage.getItem('dept_downloads');
             if (saved) {
-              callback(JSON.parse(saved));
+              const parsed: DownloadItem[] = JSON.parse(saved);
+              const filtered = parsed.filter((d) => !defaultIds.has(d.id));
+              localStorage.setItem('dept_downloads', JSON.stringify(filtered));
+              callback(filtered);
               return;
             }
           } catch {}
-          callback(initialDownloads);
-          for (const item of initialDownloads) {
-            setDoc(doc(db, 'downloads', item.id), sanitizeForFirestore(item), { merge: true }).catch(() => {});
-          }
+          callback([]);
           return;
         }
-        const data = snapshot.docs.map((d) => ({ id: d.id, ...d.data() } as DownloadItem));
+        const data = snapshot.docs
+          .map((d) => ({ id: d.id, ...d.data() } as DownloadItem))
+          .filter((d) => !defaultIds.has(d.id));
         try {
           localStorage.setItem('dept_downloads', JSON.stringify(data));
         } catch {}

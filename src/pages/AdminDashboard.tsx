@@ -41,6 +41,7 @@ import {
 } from 'lucide-react';
 import { DriveBackupTab } from '../components/DriveBackupTab';
 import { MarkFoilGenerator } from '../components/MarkFoilGenerator';
+import { ExcelStudentImportModal } from '../components/ExcelStudentImportModal';
 import { DownloadsPage } from './DownloadsPage';
 import {
   Faculty,
@@ -247,6 +248,10 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 
   // Faculty Photo Import Modal State
   const [photoFacultyModal, setPhotoFacultyModal] = useState<Faculty | null>(null);
+
+  // Excel Student Import Modal State
+  const [isExcelStudentImportModalOpen, setIsExcelStudentImportModalOpen] = useState(false);
+  const [excelImportNotification, setExcelImportNotification] = useState<string | null>(null);
 
   // Credentials Vault State
   const [credSearchTerm, setCredSearchTerm] = useState('');
@@ -1062,7 +1067,16 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                     </p>
                   </div>
 
-                  <div className="flex items-center gap-2 shrink-0">
+                  <div className="flex flex-wrap items-center gap-2 shrink-0">
+                    <button
+                      onClick={() => setIsExcelStudentImportModalOpen(true)}
+                      className="px-3.5 py-2 bg-[#0c2340] hover:bg-slate-800 text-amber-300 font-bold rounded-xl text-xs flex items-center gap-1.5 transition shadow-xs cursor-pointer"
+                      title="Import students from Excel Sheet (.xlsx / .csv)"
+                    >
+                      <Upload className="w-4 h-4 text-amber-400" />
+                      <span>Import Excel Sheet</span>
+                    </button>
+
                     <button
                       onClick={onAddStudent}
                       className="px-4 py-2 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold rounded-xl text-xs flex items-center gap-1.5 transition shadow-xs cursor-pointer"
@@ -1081,6 +1095,21 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                     </button>
                   </div>
                 </div>
+
+                {excelImportNotification && (
+                  <div className="p-4 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-900 font-semibold text-xs flex items-center justify-between gap-3 animate-in fade-in duration-200">
+                    <div className="flex items-center gap-2">
+                      <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                      <span>{excelImportNotification}</span>
+                    </div>
+                    <button
+                      onClick={() => setExcelImportNotification(null)}
+                      className="text-emerald-700 hover:text-emerald-900 cursor-pointer"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+                )}
 
                 {/* Course Stream Breakdown Cards */}
                 <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
@@ -3170,6 +3199,18 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
           }
         }}
         onClose={() => setPhotoFacultyModal(null)}
+      />
+
+      {/* Excel Student Batch Import Modal */}
+      <ExcelStudentImportModal
+        isOpen={isExcelStudentImportModalOpen}
+        onClose={() => setIsExcelStudentImportModalOpen(false)}
+        existingStudents={students}
+        onSuccess={(count) => {
+          setExcelImportNotification(`Successfully imported ${count} student record${count !== 1 ? 's' : ''} from Excel sheet into the database.`);
+          if (onRefreshData) onRefreshData();
+          setTimeout(() => setExcelImportNotification(null), 6000);
+        }}
       />
     </div>
   );
