@@ -88,6 +88,8 @@ export const DepartmentStats: React.FC<DepartmentStatsProps> = ({
     [books, settings.bookCount]
   );
 
+  const yearsSince1960 = new Date().getFullYear() - 1960;
+
   const statItems = [
     {
       id: 'faculty',
@@ -142,10 +144,10 @@ export const DepartmentStats: React.FC<DepartmentStatsProps> = ({
     {
       id: 'legacy',
       label: 'Years of Academic Service',
-      value: settings.yearsOfService || 52,
+      value: yearsSince1960,
       suffix: ' Yrs',
-      desc: 'Legacy of mathematical excellence since 1974',
-      badge: 'Est. 1974',
+      desc: 'Legacy of mathematical excellence since 1960',
+      badge: 'Est. 1960',
       icon: Award,
       tab: 'home',
       color: 'from-rose-600 to-pink-700',

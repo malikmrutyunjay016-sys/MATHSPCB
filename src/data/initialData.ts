@@ -24,7 +24,7 @@ export const initialSettings: DepartmentSettings = {
   studentCount: 0,
   courseCount: 4,
   bookCount: 1250,
-  yearsOfService: 52,
+  yearsOfService: 66,
   studentPublicPrivacy: true,
   announcementMarquee:
     'Admissions open for B.Sc. (Hons) Mathematics 2026–27 | Sambalpur University Semester-IV Examination forms available at Department Office | National Mathematics Day Celebration Paper Submissions Open',
