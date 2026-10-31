@@ -389,7 +389,7 @@ export const BatchPromotionModal: React.FC<BatchPromotionModalProps> = ({
                   >
                     <option value="Active">Active</option>
                     <option value="Back">Back</option>
-                    <option value="CLC Taken">CLC Taken</option>
+                    <option value="Dropped Out">Dropped Out</option>
                     <option value="Graduated">Graduated</option>
                   </select>
                 </div>

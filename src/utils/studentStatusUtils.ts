@@ -1,31 +1,38 @@
 // Helper utilities for Student Academic Status classification and color badge rendering
 import { Student } from '../types';
 
-export type StudentStatusType = 'Active' | 'Back' | 'CLC Taken' | 'Graduated';
+export type StudentStatusType = 'Active' | 'Back' | 'Dropped Out' | 'Graduated';
 
 export interface StudentStatusInfo {
   label: StudentStatusType;
   badgeClass: string;
   dotClass: string;
-  colorKey: 'active' | 'back' | 'clc' | 'graduated';
+  colorKey: 'active' | 'back' | 'dropped_out' | 'graduated';
 }
 
 /**
  * Normalizes and returns canonical status information with distinctive styling colors
  * - Active: Emerald Green
  * - Back: Amber / Orange
- * - CLC Taken: Rose / Red
+ * - Dropped Out: Rose / Red
  * - Graduated: Indigo / Purple
  */
 export function getStudentStatusInfo(rawStatus?: string): StudentStatusInfo {
   const s = (rawStatus || 'Active').trim().toLowerCase();
 
-  if (s === 'clc taken' || s === 'clc_taken' || s === 'clc') {
+  if (
+    s === 'dropped out' ||
+    s === 'dropped_out' ||
+    s === 'dropped' ||
+    s === 'clc taken' ||
+    s === 'clc_taken' ||
+    s === 'clc'
+  ) {
     return {
-      label: 'CLC Taken',
+      label: 'Dropped Out',
       badgeClass: 'bg-rose-100 text-rose-900 border-rose-300 shadow-2xs',
       dotClass: 'bg-rose-600',
-      colorKey: 'clc',
+      colorKey: 'dropped_out',
     };
   }
 

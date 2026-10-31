@@ -57,7 +57,7 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
   const activeStudentCount = useMemo(() => countActiveStudents(students), [students]);
 
   // Non-admins can strictly ONLY access/view active students.
-  // Admins can access and view all students (Active, Back, CLC Taken, Graduated).
+  // Admins can access and view all students (Active, Back, Dropped Out, Graduated).
   const accessibleStudents = useMemo(() => {
     if (isAdmin) return students;
     return filterActiveStudents(students);
@@ -76,7 +76,7 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
   const [activeYearLevel, setActiveYearLevel] = useState<string>('All');
   const [selectedCourse, setSelectedCourse] = useState<string>('All');
   const [selectedSemester, setSelectedSemester] = useState<string>('All');
-  const [selectedStatus, setSelectedStatus] = useState<string>('All');
+  const [selectedStatus, setSelectedStatus] = useState<string>('Active');
   const [searchTerm, setSearchTerm] = useState<string>('');
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
   const [isPrintModalOpen, setIsPrintModalOpen] = useState<boolean>(false);
@@ -383,7 +383,7 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
                 <ShieldAlert className="w-3.5 h-3.5 text-amber-700" />
                 <span>Status Filter (Admin Exclusive Access):</span>
               </span>
-              {(['All', 'Active', 'Back', 'CLC Taken', 'Graduated'] as const).map((status) => {
+              {(['All', 'Active', 'Back', 'Dropped Out', 'Graduated'] as const).map((status) => {
                 const info = status !== 'All' ? getStudentStatusInfo(status) : null;
                 const count =
                   status === 'All'

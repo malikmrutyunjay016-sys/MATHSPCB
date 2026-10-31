@@ -18,6 +18,7 @@ import { ContactPage } from './pages/ContactPage';
 import { StudentPortalPage } from './pages/StudentPortalPage';
 import { AdminDashboard } from './pages/AdminDashboard';
 import { SearchModal } from './components/SearchModal';
+import { DataLoadingBox } from './components/DataLoadingBox';
 import { FAQModal } from './components/FAQModal';
 import { PDFModal } from './components/PDFModal';
 import { StudentPortalModal } from './components/StudentPortalModal';
@@ -129,6 +130,35 @@ import { testConnection, subscribeToQuotaExceeded } from './firebase/config';
 function AppContent() {
   const [activeTab, setActiveTab] = useState<string>('home');
   const [quotaExceededInfo, setQuotaExceededInfo] = useState<{ isExceeded: boolean; upgradeUrl: string } | null>(null);
+
+  // Data Loading Box State
+  const [loadedModules, setLoadedModules] = useState<Set<string>>(new Set());
+  const [isDataLoading, setIsDataLoading] = useState<boolean>(true);
+
+  const markModuleLoaded = (modName: string) => {
+    setLoadedModules((prev) => {
+      if (prev.has(modName)) return prev;
+      const next = new Set(prev);
+      next.add(modName);
+      return next;
+    });
+  };
+
+  useEffect(() => {
+    if (loadedModules.size >= 12 && isDataLoading) {
+      const timer = setTimeout(() => {
+        setIsDataLoading(false);
+      }, 400);
+      return () => clearTimeout(timer);
+    }
+  }, [loadedModules.size, isDataLoading]);
+
+  useEffect(() => {
+    const safetyTimer = setTimeout(() => {
+      setIsDataLoading(false);
+    }, 4000);
+    return () => clearTimeout(safetyTimer);
+  }, []);
 
   useEffect(() => {
     const unsub = subscribeToQuotaExceeded((isExceeded, upgradeUrl) => {
@@ -331,37 +361,39 @@ function AppContent() {
 
     // Subscribe to Firestore collections
     const unsubFaculty = subscribeToFaculty(
-      (data) => setFaculty(data),
-      () => setFaculty(initialFaculty)
+      (data) => { setFaculty(data); markModuleLoaded('faculty'); },
+      () => { setFaculty(initialFaculty); markModuleLoaded('faculty'); }
     );
     const unsubStudents = subscribeToStudents(
-      (data) => setStudents(data),
-      () => setStudents(initialStudents)
+      (data) => { setStudents(data); markModuleLoaded('students'); },
+      () => { setStudents(initialStudents); markModuleLoaded('students'); }
     );
     const unsubCredentials = subscribeToStudentCredentials(
-      (data) => setCredentials(data),
-      () => setCredentials(initialCredentials)
+      (data) => { setCredentials(data); markModuleLoaded('credentials'); },
+      () => { setCredentials(initialCredentials); markModuleLoaded('credentials'); }
     );
     const unsubFacilities = subscribeToFacilities(
-      (data) => setFacilities(data),
-      () => setFacilities(initialFacilities)
+      (data) => { setFacilities(data); markModuleLoaded('facilities'); },
+      () => { setFacilities(initialFacilities); markModuleLoaded('facilities'); }
     );
     const unsubBooks = subscribeToBooks(
-      (data) => setBooks(data),
-      () => setBooks(initialBooks)
+      (data) => { setBooks(data); markModuleLoaded('books'); },
+      () => { setBooks(initialBooks); markModuleLoaded('books'); }
     );
     const unsubPYQ = subscribeToPYQ(
-      (data) => setPYQ(data),
-      () => setPYQ(initialQuestionPapers)
+      (data) => { setPYQ(data); markModuleLoaded('pyq'); },
+      () => { setPYQ(initialQuestionPapers); markModuleLoaded('pyq'); }
     );
     const unsubNotices = subscribeToNotices(
       (data) => {
         setNotices(data);
+        markModuleLoaded('notices');
         try {
           localStorage.setItem('dept_notices', JSON.stringify(data));
         } catch {}
       },
       () => {
+        markModuleLoaded('notices');
         try {
           const saved = localStorage.getItem('dept_notices');
           if (saved) {
@@ -377,36 +409,36 @@ function AppContent() {
       }
     );
     const unsubCommittees = subscribeToCommittees(
-      (data) => setCommittees(data),
-      () => setCommittees(initialCommittees)
+      (data) => { setCommittees(data); markModuleLoaded('committees'); },
+      () => { setCommittees(initialCommittees); markModuleLoaded('committees'); }
     );
     const unsubContacts = subscribeToContacts(
-      (data) => setContacts(data),
-      () => setContacts(initialContacts)
+      (data) => { setContacts(data); markModuleLoaded('contacts'); },
+      () => { setContacts(initialContacts); markModuleLoaded('contacts'); }
     );
     const unsubTimeTable = subscribeToTimeTable(
-      (data) => setTimeTable(data),
-      () => setTimeTable(initialTimeTable)
+      (data) => { setTimeTable(data); markModuleLoaded('timetable'); },
+      () => { setTimeTable(initialTimeTable); markModuleLoaded('timetable'); }
     );
     const unsubSyllabuses = subscribeToSyllabuses(
-      (data) => setSyllabuses(data),
-      () => setSyllabuses(initialSyllabus)
+      (data) => { setSyllabuses(data); markModuleLoaded('syllabuses'); },
+      () => { setSyllabuses(initialSyllabus); markModuleLoaded('syllabuses'); }
     );
     const unsubGallery = subscribeToGallery(
-      (data) => setGalleryPhotos(data),
-      () => setGalleryPhotos(initialGallery)
+      (data) => { setGalleryPhotos(data); markModuleLoaded('gallery'); },
+      () => { setGalleryPhotos(initialGallery); markModuleLoaded('gallery'); }
     );
     const unsubDownloads = subscribeToDownloads(
-      (data) => setDownloads(data),
-      () => setDownloads(initialDownloads)
+      (data) => { setDownloads(data); markModuleLoaded('downloads'); },
+      () => { setDownloads(initialDownloads); markModuleLoaded('downloads'); }
     );
     const unsubInquiries = subscribeToInquiries(
-      (data) => setInquiries(data),
-      () => {}
+      (data) => { setInquiries(data); markModuleLoaded('inquiries'); },
+      () => { markModuleLoaded('inquiries'); }
     );
     const unsubSettings = subscribeToSettings(
-      (data) => setSettings(data),
-      () => setSettings(initialSettings)
+      (data) => { setSettings(data); markModuleLoaded('settings'); },
+      () => { setSettings(initialSettings); markModuleLoaded('settings'); }
     );
     const unsubTimeTableConfig = subscribeToTimeTableConfig(
       (cfg) => {
@@ -416,8 +448,9 @@ function AppContent() {
         if (cfg.classRows && cfg.classRows.length > 0) {
           setClassRows(cfg.classRows);
         }
+        markModuleLoaded('ttconfig');
       },
-      () => {}
+      () => { markModuleLoaded('ttconfig'); }
     );
 
     return () => {
@@ -1191,6 +1224,10 @@ function AppContent() {
 
         {activeTab === 'admin' && (
           <AdminDashboard
+            onRefreshData={() => {
+              setLoadedModules(new Set());
+              setIsDataLoading(true);
+            }}
             faculty={faculty}
             students={students}
             credentials={credentials}
@@ -1757,6 +1794,18 @@ function AppContent() {
           });
         }}
       />
+
+      {/* Global Data Loading Box & Animated Logo Container */}
+      {isDataLoading && (
+        <DataLoadingBox
+          loadedCount={loadedModules.size}
+          totalCount={16}
+          deptName="Department of Mathematics"
+          collegeName="Panchayat College, Baragada"
+          logoUrl={settings.logoUrl}
+          onSkip={() => setIsDataLoading(false)}
+        />
+      )}
     </div>
   );
 }

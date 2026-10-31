@@ -298,7 +298,7 @@ export async function saveStudent(student: Student) {
     const status = (student.academicStatus || 'Active').trim().toLowerCase();
 
     if (status !== 'active') {
-      // Remove student credentials for non-active students (Back / CLC Taken / Graduated)
+      // Remove student credentials for non-active students (Back / Dropped Out / Graduated)
       await deleteDoc(credRef).catch(() => {});
       if (student.rollNumber) {
         await deleteDoc(doc(db, 'student_credentials', student.rollNumber.trim())).catch(() => {});

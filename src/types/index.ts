@@ -54,7 +54,7 @@ export interface Student {
   admissionYear?: string; // Joining year e.g. "2026", "2025"
   category?: string; // Category of students masked on site
   photoUrl?: string;
-  academicStatus: string; // "Active", "Back", "CLC Taken", "Graduated"
+  academicStatus: string; // "Active", "Back", "Dropped Out", "Graduated"
   createdAt?: string;
   updatedAt?: string;
 }

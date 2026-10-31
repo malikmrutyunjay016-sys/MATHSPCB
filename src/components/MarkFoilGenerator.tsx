@@ -99,12 +99,19 @@ export const MarkFoilGenerator: React.FC<MarkFoilGeneratorProps> = ({
     return collegeRoll || univRoll || s.uniqueId || '';
   };
 
-  // Enrolled students matching the chosen Course, Academic Year, and Semester (excluding students with status 'CLC Taken')
+  // Enrolled students matching the chosen Course, Academic Year, and Semester (excluding non-active/dropped out students)
   const enrolledStudents = useMemo(() => {
     return students.filter((s) => {
-      // Exclude students who have taken CLC (College Leaving Certificate)
+      // Exclude students who have dropped out / non-active
       const st = (s.academicStatus || '').trim().toLowerCase();
-      if (st === 'clc taken' || st === 'clc_taken' || st === 'clc') {
+      if (
+        st === 'dropped out' ||
+        st === 'dropped_out' ||
+        st === 'dropped' ||
+        st === 'clc taken' ||
+        st === 'clc_taken' ||
+        st === 'clc'
+      ) {
         return false;
       }
 
@@ -638,8 +645,8 @@ export const MarkFoilGenerator: React.FC<MarkFoilGeneratorProps> = ({
                 </span>
               )}
             </div>
-            <span className="text-[10.5px] bg-rose-50 text-rose-700 border border-rose-200 px-2 py-0.5 rounded font-semibold" title="Students with status 'CLC Taken' are automatically excluded from examination mark foils">
-              CLC Taken candidates excluded
+            <span className="text-[10.5px] bg-rose-50 text-rose-700 border border-rose-200 px-2 py-0.5 rounded font-semibold" title="Students with status 'Dropped Out' are automatically excluded from examination mark foils">
+              Dropped Out candidates excluded
             </span>
           </div>
         </div>

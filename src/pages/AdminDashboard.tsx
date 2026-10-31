@@ -340,7 +340,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     }
   };
 
-  // Active student credentials (non-active students Back / CLC Taken / Graduated have credentials removed)
+  // Active student credentials (non-active students Back / Dropped Out / Graduated have credentials removed)
   const activeCredentials = useMemo(() => {
     const nonActiveSet = new Set<string>();
     (students || []).forEach((s) => {
@@ -1283,7 +1283,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                       <option value="All">All Statuses (Admin)</option>
                       <option value="Active">Active Only</option>
                       <option value="Back">Back</option>
-                      <option value="CLC Taken">CLC Taken</option>
+                      <option value="Dropped Out">Dropped Out</option>
                       <option value="Graduated">Graduated</option>
                     </select>
                   </div>
@@ -1522,7 +1522,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                         alert(`Purging complete: Removed credentials for non-active students (${res.purgedCount} purged from database).`);
                       }}
                       className="px-3.5 py-2 bg-rose-50 hover:bg-rose-100 border border-rose-200 text-rose-700 font-bold rounded-xl text-xs flex items-center gap-1.5 transition cursor-pointer"
-                      title="Purge Student ID & Password for non-active students (Back, CLC Taken, Graduated)"
+                      title="Purge Student ID & Password for non-active students (Back, Dropped Out, Graduated)"
                     >
                       <Trash2 className="w-3.5 h-3.5 text-rose-600" />
                       <span>Purge Non-Active Credentials</span>
