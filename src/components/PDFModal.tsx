@@ -219,7 +219,7 @@ export const PDFModal: React.FC<PDFModalProps> = ({
                 ? 'Official department circular photo. You can view in high resolution or download below.'
                 : isGDrive
                 ? 'Google Drive document linked. Viewing via official Google Drive embedded viewer.'
-                : 'In-app PDF Canvas Reader active. Interactive zoom & page navigation supported.'}
+                : 'In-app PDF Canvas Reader active. Continuous vertical scroll view & zoom supported.'}
             </span>
           </div>
         </div>
