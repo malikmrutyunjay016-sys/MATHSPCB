@@ -293,35 +293,45 @@ export async function saveStudent(student: Student) {
       updatedAt: new Date().toISOString(),
     }));
 
-    // Harmonize with student_credentials so both databases always have the exact same students
     const uniqueId = student.uniqueId || student.rollNumber.trim();
     const credRef = doc(db, 'student_credentials', uniqueId);
-    let existingPassword = `Math@${student.admissionYear || '2026'}`;
-    try {
-      const existingDoc = await getDoc(credRef);
-      if (existingDoc.exists() && existingDoc.data()?.password) {
-        existingPassword = existingDoc.data().password;
-      }
-    } catch {
-      // Ignore
-    }
+    const status = (student.academicStatus || 'Active').trim().toLowerCase();
 
-    await setDoc(
-      credRef,
-      sanitizeForFirestore({
-        id: uniqueId,
-        uniqueId,
-        studentId: student.id,
-        rollNumber: student.rollNumber.trim(),
-        studentName: student.name.trim(),
-        password: existingPassword,
-        course: student.course,
-        admissionYear: student.admissionYear || '2026',
-        createdAt: student.createdAt || new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      }),
-      { merge: true }
-    );
+    if (status !== 'active') {
+      // Remove student credentials for non-active students (Back / CLC Taken / Graduated)
+      await deleteDoc(credRef).catch(() => {});
+      if (student.rollNumber) {
+        await deleteDoc(doc(db, 'student_credentials', student.rollNumber.trim())).catch(() => {});
+      }
+      await deleteDoc(doc(db, 'student_credentials', student.id)).catch(() => {});
+    } else {
+      let existingPassword = `Math@${student.admissionYear || '2026'}`;
+      try {
+        const existingDoc = await getDoc(credRef);
+        if (existingDoc.exists() && existingDoc.data()?.password) {
+          existingPassword = existingDoc.data().password;
+        }
+      } catch {
+        // Ignore
+      }
+
+      await setDoc(
+        credRef,
+        sanitizeForFirestore({
+          id: uniqueId,
+          uniqueId,
+          studentId: student.id,
+          rollNumber: student.rollNumber.trim(),
+          studentName: student.name.trim(),
+          password: existingPassword,
+          course: student.course,
+          admissionYear: student.admissionYear || '2026',
+          createdAt: student.createdAt || new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        }),
+        { merge: true }
+      );
+    }
   } catch (err) {
     handleFirestoreError(err, OperationType.WRITE, path);
   }
@@ -396,15 +406,25 @@ export async function batchPromoteStudents(
         // Synchronize linked credential record
         const uniqueId = s.uniqueId || s.rollNumber.trim();
         const credRef = doc(db, 'student_credentials', uniqueId);
-        batch.set(
-          credRef,
-          sanitizeForFirestore({
-            course: s.course,
-            admissionYear: s.admissionYear || '2026',
-            updatedAt: new Date().toISOString(),
-          }),
-          { merge: true }
-        );
+        const status = (s.academicStatus || 'Active').trim().toLowerCase();
+
+        if (status !== 'active') {
+          batch.delete(credRef);
+          if (s.rollNumber) {
+            batch.delete(doc(db, 'student_credentials', s.rollNumber.trim()));
+          }
+          batch.delete(doc(db, 'student_credentials', s.id));
+        } else {
+          batch.set(
+            credRef,
+            sanitizeForFirestore({
+              course: s.course,
+              admissionYear: s.admissionYear || '2026',
+              updatedAt: new Date().toISOString(),
+            }),
+            { merge: true }
+          );
+        }
       }
       await batch.commit();
     }
@@ -617,11 +637,66 @@ export async function loginStudentPortal(
       };
     }
 
+    const st = (studentData.academicStatus || 'Active').trim().toLowerCase();
+    if (st !== 'active') {
+      // Purge credential doc for non-active student
+      await deleteDoc(doc(db, 'student_credentials', credData.uniqueId)).catch(() => {});
+      return {
+        success: false,
+        error: `Login disabled: Student ID & Password removed for student with '${studentData.academicStatus}' status.`
+      };
+    }
+
     return { success: true, student: studentData, credential: credData };
   } catch (err: any) {
     console.error('Login Error:', err);
     return { success: false, error: err?.message || 'Student login failed.' };
   }
+}
+
+/**
+ * Sweeps the database and removes Student ID & Password credential records for any non-active students
+ */
+export async function purgeInactiveStudentCredentials(): Promise<{ purgedCount: number }> {
+  let purgedCount = 0;
+  try {
+    const studentsSnap = await getDocs(collection(db, 'students'));
+    const nonActiveStudentIds = new Set<string>();
+    const nonActiveRolls = new Set<string>();
+    const nonActiveUniqueIds = new Set<string>();
+
+    studentsSnap.docs.forEach((d) => {
+      const s = d.data();
+      const st = (s.academicStatus || 'Active').trim().toLowerCase();
+      if (st !== 'active') {
+        if (d.id) nonActiveStudentIds.add(d.id);
+        if (s.rollNumber) nonActiveRolls.add(s.rollNumber.trim().toLowerCase());
+        if (s.uniqueId) nonActiveUniqueIds.add(s.uniqueId.trim().toLowerCase());
+      }
+    });
+
+    const credsSnap = await getDocs(collection(db, 'student_credentials'));
+    for (const cDoc of credsSnap.docs) {
+      const c = cDoc.data();
+      const cId = cDoc.id;
+      const studentId = c.studentId;
+      const roll = (c.rollNumber || '').trim().toLowerCase();
+      const uniqueId = (c.uniqueId || '').trim().toLowerCase();
+
+      if (
+        nonActiveStudentIds.has(cId) ||
+        (studentId && nonActiveStudentIds.has(studentId)) ||
+        (roll && nonActiveRolls.has(roll)) ||
+        (uniqueId && nonActiveUniqueIds.has(uniqueId))
+      ) {
+        await deleteDoc(doc(db, 'student_credentials', cDoc.id)).catch(() => {});
+        purgedCount++;
+      }
+    }
+  } catch (err) {
+    console.warn('purgeInactiveStudentCredentials error:', err);
+  }
+  return { purgedCount };
 }
 
 // ------------------- FACILITIES -------------------

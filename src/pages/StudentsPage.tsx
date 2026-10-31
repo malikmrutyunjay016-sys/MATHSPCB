@@ -20,9 +20,17 @@ import {
   MapPin,
   Calendar,
   Sparkles,
+  X,
 } from 'lucide-react';
 import { Student } from '../types';
 import { useAuth } from '../context/AuthContext';
+import { printStudentDirectory } from '../utils/studentPrintUtils';
+import {
+  getStudentStatusInfo,
+  isStudentActive,
+  countActiveStudents,
+  filterActiveStudents,
+} from '../utils/studentStatusUtils';
 
 interface StudentsPageProps {
   students: Student[];
@@ -45,25 +53,48 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
 }) => {
   const { isAdmin, openAdminLoginModal } = useAuth();
 
-  // Extract unique academic years dynamically from database + default defaults
+  // Official student count in database (only counts students whose status is 'Active')
+  const activeStudentCount = useMemo(() => countActiveStudents(students), [students]);
+
+  // Non-admins can strictly ONLY access/view active students.
+  // Admins can access and view all students (Active, Back, CLC Taken, Graduated).
+  const accessibleStudents = useMemo(() => {
+    if (isAdmin) return students;
+    return filterActiveStudents(students);
+  }, [students, isAdmin]);
+
+  // Extract unique academic years dynamically from accessible students + default defaults
   const availableYears = useMemo(() => {
     const yearsSet = new Set<string>(['2026–27', '2025–26', '2024–25']);
-    students.forEach((s) => {
+    accessibleStudents.forEach((s) => {
       if (s.academicYear) yearsSet.add(s.academicYear);
     });
     return Array.from(yearsSet).sort().reverse();
-  }, [students]);
+  }, [accessibleStudents]);
 
   const [activeYearTab, setActiveYearTab] = useState<string>('All');
   const [activeYearLevel, setActiveYearLevel] = useState<string>('All');
   const [selectedCourse, setSelectedCourse] = useState<string>('All');
   const [selectedSemester, setSelectedSemester] = useState<string>('All');
+  const [selectedStatus, setSelectedStatus] = useState<string>('All');
   const [searchTerm, setSearchTerm] = useState<string>('');
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
+  const [isPrintModalOpen, setIsPrintModalOpen] = useState<boolean>(false);
 
-  // Filter students
+  // Filter students: non-admin can only access active students; admin can filter by all statuses
   const filteredStudents = useMemo(() => {
-    return students.filter((s) => {
+    return accessibleStudents.filter((s) => {
+      // Security check: non-admin can NEVER access non-active students
+      if (!isAdmin && !isStudentActive(s)) {
+        return false;
+      }
+
+      // Admin status filter
+      if (isAdmin && selectedStatus !== 'All') {
+        const info = getStudentStatusInfo(s.academicStatus);
+        if (info.label !== selectedStatus) return false;
+      }
+
       const matchYear = activeYearTab === 'All' || s.academicYear === activeYearTab || s.admissionYear === activeYearTab;
       const matchLevel = activeYearLevel === 'All' || s.yearLevel === activeYearLevel;
       const matchCourse =
@@ -90,13 +121,13 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
 
       return matchYear && matchLevel && matchCourse && matchSem && matchSearch;
     });
-  }, [students, activeYearTab, activeYearLevel, selectedCourse, selectedSemester, searchTerm]);
+  }, [accessibleStudents, isAdmin, selectedStatus, activeYearTab, activeYearLevel, selectedCourse, selectedSemester, searchTerm]);
 
   // Export CSV
   const handleExportCSV = () => {
     const headers = [
-      'Roll Number',
-      'Registration Number',
+      'College Roll No',
+      'University Roll No',
       'Student Name',
       'Course',
       'Academic Year',
@@ -139,7 +170,18 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
   };
 
   const handlePrint = () => {
-    window.print();
+    setIsPrintModalOpen(true);
+    printStudentDirectory(
+      filteredStudents,
+      {
+        batch: activeYearTab,
+        course: selectedCourse,
+        yearLevel: activeYearLevel,
+        semester: selectedSemester,
+        searchTerm,
+      },
+      isAdmin
+    );
   };
 
   return (
@@ -150,7 +192,7 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
           <div className="space-y-2">
             <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-50 text-amber-800 border border-amber-200 text-xs font-bold uppercase tracking-wider">
               <GraduationCap className="w-3.5 h-3.5" />
-              <span>Department Student Database</span>
+              <span>Department Student Database &bull; {activeStudentCount} Enrolled Active Students</span>
             </div>
             <h1 className="font-serif-academic text-2xl sm:text-3xl md:text-4xl font-extrabold text-[#0c2340]">
               Student Records & Academic Batches
@@ -182,7 +224,7 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
 
             <button
               onClick={handlePrint}
-              className="px-3.5 py-2 bg-white hover:bg-slate-50 border border-slate-300 text-slate-700 font-semibold rounded-lg text-xs flex items-center gap-1.5 transition cursor-pointer hidden sm:flex"
+              className="px-3.5 py-2 bg-white hover:bg-slate-50 border border-slate-300 text-slate-700 font-semibold rounded-lg text-xs flex items-center gap-1.5 transition cursor-pointer"
               title="Print Student Directory"
             >
               <Printer className="w-4 h-4 text-slate-600" />
@@ -333,6 +375,39 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
               </select>
             </div>
           </div>
+
+          {/* Admin Status Filter (Only visible to Admin) */}
+          {isAdmin && (
+            <div className="flex flex-wrap items-center gap-2 p-3 bg-amber-50/70 border border-amber-200 rounded-xl">
+              <span className="text-xs font-bold text-amber-900 uppercase tracking-wider mr-2 flex items-center gap-1.5">
+                <ShieldAlert className="w-3.5 h-3.5 text-amber-700" />
+                <span>Status Filter (Admin Exclusive Access):</span>
+              </span>
+              {(['All', 'Active', 'Back', 'CLC Taken', 'Graduated'] as const).map((status) => {
+                const info = status !== 'All' ? getStudentStatusInfo(status) : null;
+                const count =
+                  status === 'All'
+                    ? students.length
+                    : students.filter((s) => getStudentStatusInfo(s.academicStatus).label === status).length;
+                return (
+                  <button
+                    key={status}
+                    type="button"
+                    onClick={() => setSelectedStatus(status)}
+                    className={`px-3 py-1 rounded-lg text-xs font-bold transition cursor-pointer flex items-center gap-1.5 ${
+                      selectedStatus === status
+                        ? 'bg-[#0c2340] text-amber-300 shadow-xs'
+                        : 'bg-white text-slate-700 hover:bg-slate-100 border border-slate-200'
+                    }`}
+                  >
+                    {info && <span className={`w-2 h-2 rounded-full ${info.dotClass}`} />}
+                    <span>{status === 'All' ? 'All Statuses' : status}</span>
+                    <span className="text-[10px] opacity-80">({count})</span>
+                  </button>
+                );
+              })}
+            </div>
+          )}
         </div>
 
         {/* Search Input Bar */}
@@ -343,13 +418,22 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
               type="text"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              placeholder="Search by student name, roll number, or reg no..."
+              placeholder="Search by student name, college roll no, or university roll no..."
               className="w-full pl-9 pr-4 py-2 rounded-lg border border-slate-200 text-xs focus:outline-hidden focus:border-blue-600"
             />
           </div>
 
           <div className="text-xs text-slate-500">
             Found <strong className="text-slate-900">{filteredStudents.length}</strong> student record{filteredStudents.length === 1 ? '' : 's'}
+            {!isAdmin ? (
+              <span className="text-emerald-700 font-semibold ml-1.5 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded">
+                Active Enrolled Students Only
+              </span>
+            ) : (
+              <span className="text-amber-800 font-semibold ml-1.5 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded">
+                Admin Access: Full Status View
+              </span>
+            )}
           </div>
         </div>
 
@@ -359,10 +443,11 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
             <table className="w-full text-left text-xs text-slate-700">
               <thead className="bg-[#0f223d] text-white uppercase text-[10px] tracking-wider font-semibold">
                 <tr>
-                  <th className="py-3.5 px-4">Roll No / Reg</th>
+                  <th className="py-3.5 px-4">College Roll No / University Roll No</th>
                   <th className="py-3.5 px-4">Student Name</th>
                   <th className="py-3.5 px-4">Program / Course</th>
                   <th className="py-3.5 px-4">Year, Admission Batch & Semester</th>
+                  <th className="py-3.5 px-4">Status</th>
                   <th className="py-3.5 px-4">
                     <span className="flex items-center gap-1">
                       <span>Category</span>
@@ -385,7 +470,7 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
               <tbody className="divide-y divide-slate-100">
                 {filteredStudents.length === 0 ? (
                   <tr>
-                    <td colSpan={7} className="text-center py-12 text-slate-400">
+                    <td colSpan={8} className="text-center py-12 text-slate-400">
                       No student records found matching the current filters.
                     </td>
                   </tr>
@@ -395,11 +480,13 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
                       key={student.id}
                       className="hover:bg-blue-50/40 transition-colors group"
                     >
-                      {/* Roll / Reg */}
-                      <td className="py-3.5 px-4 font-mono font-bold text-slate-900">
-                        <div>{student.rollNumber}</div>
-                        <div className="text-[10px] text-slate-400 font-normal">
-                          {student.registrationNumber || 'Pending'}
+                      {/* College Roll No / University Roll No */}
+                      <td className="py-3.5 px-4 font-mono text-slate-900">
+                        <div className="font-bold text-slate-900 leading-snug" title="College Roll No">
+                          {student.rollNumber}
+                        </div>
+                        <div className="text-[10px] text-slate-500 font-medium leading-snug" title="University Roll No">
+                          {student.registrationNumber || <span className="text-slate-400 font-normal italic">Pending University Roll</span>}
                         </div>
                       </td>
 
@@ -436,6 +523,22 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
                         <div className="text-[11px] text-amber-700 font-semibold">
                           {student.semester}
                         </div>
+                      </td>
+
+                      {/* Academic Status with Color Coding */}
+                      <td className="py-3.5 px-4">
+                        {(() => {
+                          const stInfo = getStudentStatusInfo(student.academicStatus);
+                          return (
+                            <span
+                              className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold border ${stInfo.badgeClass}`}
+                              title={`Status: ${stInfo.label}`}
+                            >
+                              <span className={`w-2 h-2 rounded-full ${stInfo.dotClass}`} />
+                              <span>{stInfo.label}</span>
+                            </span>
+                          );
+                        })()}
                       </td>
 
                       {/* Category (Masked on site) */}
@@ -591,6 +694,22 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
                     {selectedStudent.admissionYear || 'N/A'}
                   </p>
                 </div>
+                <div className="col-span-2 pt-2 border-t border-slate-200 flex items-center justify-between">
+                  <span className="text-[10px] uppercase font-bold text-slate-500">
+                    Academic Status
+                  </span>
+                  <div>
+                    {(() => {
+                      const stInfo = getStudentStatusInfo(selectedStudent.academicStatus);
+                      return (
+                        <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold border ${stInfo.badgeClass}`}>
+                          <span className={`w-2 h-2 rounded-full ${stInfo.dotClass}`} />
+                          <span>{stInfo.label}</span>
+                        </span>
+                      );
+                    })()}
+                  </div>
+                </div>
               </div>
 
               <div className="grid grid-cols-2 gap-3 bg-slate-50 p-4 rounded-xl border border-slate-200">
@@ -692,6 +811,252 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({
               >
                 Close Profile
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Print Preview & Direct Print Modal */}
+      {isPrintModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-black/75 backdrop-blur-xs animate-in fade-in duration-200">
+          <div className="bg-white rounded-2xl w-full max-w-5xl shadow-2xl border border-slate-200 overflow-hidden flex flex-col max-h-[92vh]">
+            {/* Modal Header */}
+            <div className="bg-[#0c2340] text-white p-4 sm:p-5 flex items-center justify-between border-b border-slate-800 shrink-0">
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-lg bg-amber-500/20 text-amber-400 border border-amber-500/30">
+                  <Printer className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="font-serif-academic text-base sm:text-lg font-bold">
+                    Print Student Directory &amp; Academic Roll Sheet
+                  </h3>
+                  <p className="text-[11px] text-slate-300">
+                    Official format &bull; {filteredStudents.length} Students &bull; Batch: {activeYearTab} &bull; Course: {selectedCourse}
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() =>
+                    printStudentDirectory(
+                      filteredStudents,
+                      {
+                        batch: activeYearTab,
+                        course: selectedCourse,
+                        yearLevel: activeYearLevel,
+                        semester: selectedSemester,
+                        searchTerm,
+                      },
+                      isAdmin
+                    )
+                  }
+                  className="px-4 py-2 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold rounded-lg text-xs flex items-center gap-1.5 shadow-sm transition cursor-pointer"
+                >
+                  <Printer className="w-4 h-4" />
+                  <span>Print Document</span>
+                </button>
+                <button
+                  onClick={() => setIsPrintModalOpen(false)}
+                  className="p-1.5 text-slate-400 hover:text-white rounded-lg hover:bg-white/10 transition cursor-pointer"
+                  title="Close Preview"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+            </div>
+
+            {/* Modal Action Toolbar */}
+            <div className="bg-slate-100 px-5 py-2.5 border-b border-slate-200 flex flex-wrap items-center justify-between gap-3 text-xs shrink-0">
+              <div className="flex items-center gap-2 text-slate-600">
+                <span className="font-semibold text-slate-900">Print Preview:</span>
+                <span>A4 Landscape Academic Format with Department Letterhead</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={handleExportCSV}
+                  className="px-3 py-1.5 bg-white hover:bg-slate-50 border border-slate-300 text-slate-700 font-semibold rounded-md text-xs flex items-center gap-1.5 transition cursor-pointer"
+                >
+                  <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-600" />
+                  <span>Export CSV</span>
+                </button>
+                <button
+                  onClick={() =>
+                    printStudentDirectory(
+                      filteredStudents,
+                      {
+                        batch: activeYearTab,
+                        course: selectedCourse,
+                        yearLevel: activeYearLevel,
+                        semester: selectedSemester,
+                        searchTerm,
+                      },
+                      isAdmin
+                    )
+                  }
+                  className="px-3.5 py-1.5 bg-[#0c2340] hover:bg-blue-950 text-white font-bold rounded-md text-xs flex items-center gap-1.5 transition cursor-pointer"
+                >
+                  <Printer className="w-3.5 h-3.5 text-amber-400" />
+                  <span>Open Print Dialog</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Document Paper Preview */}
+            <div className="p-4 sm:p-6 overflow-y-auto bg-slate-200/60 flex-1">
+              <div className="bg-white border border-slate-300 shadow-lg rounded-sm p-6 sm:p-8 max-w-4xl mx-auto font-serif text-black space-y-4">
+                {/* Letterhead */}
+                <div className="text-center border-b-2 border-black pb-3 space-y-0.5">
+                  <div className="text-sm sm:text-base font-bold tracking-wide uppercase">
+                    PANCHAYAT COLLEGE, BARAGADA
+                  </div>
+                  <div className="text-xs sm:text-sm font-bold text-blue-900">
+                    Department of Mathematics
+                  </div>
+                  <div className="text-[11px] sm:text-xs font-bold uppercase underline tracking-wider pt-1">
+                    Enrolled Student Directory &amp; Academic Batch Roll Sheet
+                  </div>
+                </div>
+
+                {/* Metadata */}
+                <div className="flex flex-wrap items-center justify-between text-[11px] bg-slate-50 p-2.5 border border-slate-200 rounded font-sans gap-2">
+                  <div>
+                    <span className="text-slate-500">Batch:</span>{' '}
+                    <strong>{activeYearTab !== 'All' ? activeYearTab : 'All Batches'}</strong>
+                  </div>
+                  <div>
+                    <span className="text-slate-500">Course:</span>{' '}
+                    <strong>{selectedCourse !== 'All' ? selectedCourse : 'All Courses'}</strong>
+                  </div>
+                  <div>
+                    <span className="text-slate-500">Year Level:</span>{' '}
+                    <strong>{activeYearLevel !== 'All' ? activeYearLevel : 'All Levels'}</strong>
+                  </div>
+                  <div>
+                    <span className="text-slate-500">Semester:</span>{' '}
+                    <strong>{selectedSemester !== 'All' ? selectedSemester : 'All Semesters'}</strong>
+                  </div>
+                  <div>
+                    <span className="text-slate-500">Total Scholars:</span>{' '}
+                    <strong>{filteredStudents.length}</strong>
+                  </div>
+                </div>
+
+                {/* Table */}
+                <div className="overflow-x-auto">
+                  <table className="w-full border-collapse border border-black text-[11px]">
+                    <thead>
+                      <tr className="bg-slate-100 border-b border-black text-center font-bold">
+                        <th className="border-r border-black p-1.5 w-8">#</th>
+                        <th className="border-r border-black p-1.5 w-28">College Roll No</th>
+                        <th className="border-r border-black p-1.5 w-28">University Roll No</th>
+                        <th className="border-r border-black p-1.5 text-left pl-2">Student Name</th>
+                        <th className="border-r border-black p-1.5 w-20">Course</th>
+                        <th className="border-r border-black p-1.5 w-24">Session &amp; Sem</th>
+                        <th className="border-r border-black p-1.5 w-16">Category</th>
+                        <th className="p-1.5 w-32 text-left pl-2">Contact Details</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {filteredStudents.length === 0 ? (
+                        <tr>
+                          <td colSpan={8} className="p-4 text-center text-slate-500">
+                            No student records found matching current filters.
+                          </td>
+                        </tr>
+                      ) : (
+                        filteredStudents.map((s, idx) => (
+                          <tr key={s.id} className="border-b border-black">
+                            <td className="border-r border-black p-1 text-center">{idx + 1}</td>
+                            <td className="border-r border-black p-1 font-mono font-bold">{s.rollNumber}</td>
+                            <td className="border-r border-black p-1 font-mono text-[10px] text-slate-600">
+                              {s.registrationNumber || 'Pending'}
+                            </td>
+                            <td className="border-r border-black p-1 text-left font-semibold">
+                              <div>{s.name}</div>
+                              {s.fatherMotherName && (
+                                <div className="text-[9.5px] font-normal text-slate-500 font-sans">
+                                  G: {s.fatherMotherName}
+                                </div>
+                              )}
+                            </td>
+                            <td className="border-r border-black p-1 text-center font-medium">{s.course}</td>
+                            <td className="border-r border-black p-1 text-center text-[10px]">
+                              {s.yearLevel} {s.semester && s.semester !== 'All' ? `(${s.semester})` : ''}
+                            </td>
+                            <td className="border-r border-black p-1 text-center text-[10px]">
+                              {isAdmin ? s.category || 'GEN' : '••••'}
+                            </td>
+                            <td className="p-1 text-[10px] text-slate-600">
+                              {isAdmin ? (
+                                <div>
+                                  <div>{s.mobile || '—'}</div>
+                                  <div className="truncate max-w-[120px]">{s.email || '—'}</div>
+                                </div>
+                              ) : (
+                                '•••••••• (Masked)'
+                              )}
+                            </td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+
+                {/* Signatures */}
+                <div className="pt-8 flex items-end justify-between px-4 text-xs">
+                  <div className="text-center">
+                    <div className="border-t border-black w-36 mb-1" />
+                    <div className="font-bold">Faculty Academic Advisor</div>
+                    <div className="text-[10px] text-slate-600 font-sans">Dept. of Mathematics</div>
+                  </div>
+                  <div className="text-center">
+                    <div className="border-t border-black w-36 mb-1" />
+                    <div className="font-bold">Head of Department</div>
+                    <div className="text-[10px] text-slate-600 font-sans">Dept. of Mathematics</div>
+                  </div>
+                  <div className="text-center">
+                    <div className="border-t border-black w-36 mb-1" />
+                    <div className="font-bold">Principal / Officer-in-Charge</div>
+                    <div className="text-[10px] text-slate-600 font-sans">Panchayat College, Baragada</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Modal Footer */}
+            <div className="p-3 bg-slate-50 border-t border-slate-200 flex items-center justify-between text-xs shrink-0">
+              <span className="text-slate-500 text-[11px]">
+                Tip: In the print dialog, choose &quot;Save as PDF&quot; or select your connected printer.
+              </span>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setIsPrintModalOpen(false)}
+                  className="px-4 py-1.5 bg-slate-200 hover:bg-slate-300 text-slate-800 rounded-lg font-semibold transition cursor-pointer"
+                >
+                  Close
+                </button>
+                <button
+                  onClick={() =>
+                    printStudentDirectory(
+                      filteredStudents,
+                      {
+                        batch: activeYearTab,
+                        course: selectedCourse,
+                        yearLevel: activeYearLevel,
+                        semester: selectedSemester,
+                        searchTerm,
+                      },
+                      isAdmin
+                    )
+                  }
+                  className="px-4 py-1.5 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold rounded-lg flex items-center gap-1.5 shadow-xs transition cursor-pointer"
+                >
+                  <Printer className="w-3.5 h-3.5" />
+                  <span>Print Document</span>
+                </button>
+              </div>
             </div>
           </div>
         </div>

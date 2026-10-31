@@ -570,7 +570,7 @@ export const StudentModal: React.FC<{
             </div>
             <div>
               <label className="block font-bold text-slate-700 uppercase mb-1 text-[11px]">
-                Registration Number
+                University Roll Number
               </label>
               <input
                 type="text"
@@ -751,7 +751,8 @@ export const StudentModal: React.FC<{
                 className="w-full p-2.5 rounded-lg border border-slate-200 text-xs focus:outline-hidden"
               >
                 <option value="Active">Active</option>
-                <option value="Alumni">Alumni</option>
+                <option value="Back">Back</option>
+                <option value="CLC Taken">CLC Taken</option>
                 <option value="Graduated">Graduated</option>
               </select>
             </div>

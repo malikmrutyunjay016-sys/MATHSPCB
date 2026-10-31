@@ -441,7 +441,7 @@ export const StudentPortalModal: React.FC<StudentPortalModalProps> = ({
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="block text-slate-700 font-semibold mb-1">
-                    Registration Number
+                    University Roll Number
                   </label>
                   <input
                     type="text"

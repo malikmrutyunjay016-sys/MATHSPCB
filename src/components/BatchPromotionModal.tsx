@@ -357,7 +357,7 @@ export const BatchPromotionModal: React.FC<BatchPromotionModalProps> = ({
                     <option value="2nd Year">2nd Year</option>
                     <option value="3rd Year">3rd Year</option>
                     <option value="4th Year">4th Year</option>
-                    <option value="Graduated">Graduated / Alumni</option>
+                    <option value="Graduated">Graduated</option>
                     <option value="Keep Current">Keep Current</option>
                   </select>
                 </div>
@@ -388,7 +388,8 @@ export const BatchPromotionModal: React.FC<BatchPromotionModalProps> = ({
                     className="px-2.5 py-1 border border-slate-300 rounded-lg text-xs font-medium text-slate-800"
                   >
                     <option value="Active">Active</option>
-                    <option value="Alumni">Alumni</option>
+                    <option value="Back">Back</option>
+                    <option value="CLC Taken">CLC Taken</option>
                     <option value="Graduated">Graduated</option>
                   </select>
                 </div>

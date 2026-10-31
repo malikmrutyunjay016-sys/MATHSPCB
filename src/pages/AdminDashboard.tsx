@@ -66,10 +66,16 @@ import { useAuth } from '../context/AuthContext';
 import {
   updateDepartmentSettings,
   saveFacultyMember,
+  purgeInactiveStudentCredentials,
   DEFAULT_ADMIN_ID,
   MASTER_ADMIN_KEY,
 } from '../services/db';
 import { FacultyPhotoModal } from '../components/FacultyPhotoPicker';
+import {
+  getStudentStatusInfo,
+  countActiveStudents,
+  isStudentActive,
+} from '../utils/studentStatusUtils';
 
 interface AdminDashboardProps {
   faculty: Faculty[];
@@ -268,6 +274,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   const [studentCourseFilter, setStudentCourseFilter] = useState('All');
   const [studentYearFilter, setStudentYearFilter] = useState('All');
   const [studentLevelFilter, setStudentLevelFilter] = useState('All');
+  const [studentStatusFilter, setStudentStatusFilter] = useState('All');
   const [editCredModal, setEditCredModal] = useState<{
     isOpen: boolean;
     cred: StudentCredential | null;
@@ -298,7 +305,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 
   const [statsForm, setStatsForm] = useState({
     facultyCount: (faculty && faculty.length) || settings.facultyCount || 6,
-    studentCount: (students && students.length) || settings.studentCount || 9,
+    studentCount: countActiveStudents(students) || settings.studentCount || 9,
     courseCount: settings.courseCount || 3,
     bookCount: liveBookCount || settings.bookCount || 116,
     yearsOfService: settings.yearsOfService || 52,
@@ -315,10 +322,10 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     setStatsForm((prev) => ({
       ...prev,
       facultyCount: faculty.length,
-      studentCount: students.length,
+      studentCount: countActiveStudents(students),
       bookCount: liveBookCount,
     }));
-  }, [faculty.length, students.length, liveBookCount]);
+  }, [faculty.length, students, liveBookCount]);
 
   const [saveSuccessMsg, setSaveSuccessMsg] = useState('');
 
@@ -333,9 +340,31 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     }
   };
 
+  // Active student credentials (non-active students Back / CLC Taken / Graduated have credentials removed)
+  const activeCredentials = useMemo(() => {
+    const nonActiveSet = new Set<string>();
+    (students || []).forEach((s) => {
+      const st = (s.academicStatus || 'Active').trim().toLowerCase();
+      if (st !== 'active') {
+        if (s.id) nonActiveSet.add(s.id);
+        if (s.uniqueId) nonActiveSet.add(s.uniqueId.trim().toLowerCase());
+        if (s.rollNumber) nonActiveSet.add(s.rollNumber.trim().toLowerCase());
+      }
+    });
+
+    return (credentials || []).filter((c) => {
+      const isInactive =
+        (c.id && nonActiveSet.has(c.id)) ||
+        (c.studentId && nonActiveSet.has(c.studentId)) ||
+        (c.uniqueId && nonActiveSet.has(c.uniqueId.trim().toLowerCase())) ||
+        (c.rollNumber && nonActiveSet.has(c.rollNumber.trim().toLowerCase()));
+      return !isInactive;
+    });
+  }, [credentials, students]);
+
   // Filtered student credentials for the admin database
   const filteredCredentials = useMemo(() => {
-    return (credentials || []).filter((c) => {
+    return activeCredentials.filter((c) => {
       const matchCourse =
         credCourseFilter === 'All' ||
         (c.course && c.course.toLowerCase().includes(credCourseFilter.toLowerCase()));
@@ -351,7 +380,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 
       return matchCourse && matchYear && matchSearch;
     });
-  }, [credentials, credCourseFilter, credYearFilter, credSearchTerm]);
+  }, [activeCredentials, credCourseFilter, credYearFilter, credSearchTerm]);
 
   const handleCopyPassword = (text: string, id: string) => {
     navigator.clipboard.writeText(text);
@@ -361,7 +390,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 
   const handleExportCredentialsCSV = () => {
     const headers = [
-      'Roll Number',
+      'College Roll No',
       'Unique Login ID',
       'Student Name',
       'Course',
@@ -423,6 +452,9 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
         s.admissionYear === studentYearFilter;
       const matchLevel =
         studentLevelFilter === 'All' || s.yearLevel === studentLevelFilter;
+      const matchStatus =
+        studentStatusFilter === 'All' ||
+        getStudentStatusInfo(s.academicStatus).label.toLowerCase() === studentStatusFilter.toLowerCase();
       const term = studentSearchTerm.toLowerCase().trim();
       const matchSearch =
         !term ||
@@ -436,15 +468,15 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
         (s.registrationNumber && s.registrationNumber.toLowerCase().includes(term)) ||
         (s.uniqueId && s.uniqueId.toLowerCase().includes(term));
 
-      return matchCourse && matchYear && matchLevel && matchSearch;
+      return matchCourse && matchYear && matchLevel && matchStatus && matchSearch;
     });
-  }, [students, studentCourseFilter, studentYearFilter, studentLevelFilter, studentSearchTerm]);
+  }, [students, studentCourseFilter, studentYearFilter, studentLevelFilter, studentStatusFilter, studentSearchTerm]);
 
   const handleExportStudentsCSV = () => {
     const headers = [
-      'Roll Number',
+      'College Roll No',
       'Barcode',
-      'Registration Number',
+      'University Roll No',
       'Applicant Name',
       'Father Name',
       'Mother Name',
@@ -818,11 +850,11 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     { id: 'overview', label: 'Overview & Stats', icon: Sliders },
     {
       id: 'credentials',
-      label: `Student ID & Passwords (${credentials?.length || 0})`,
+      label: `Student ID & Passwords (${activeCredentials?.length || 0})`,
       icon: KeyRound,
     },
     { id: 'faculty', label: `Faculty (${faculty.length})`, icon: Users },
-    { id: 'students', label: `Students (${students.length})`, icon: GraduationCap },
+    { id: 'students', label: `Students (${countActiveStudents(students)})`, icon: GraduationCap },
     { id: 'markFoil', label: 'Mark Foil Generator', icon: Award },
     {
       id: 'downloads',
@@ -931,8 +963,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 
                 <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3.5">
                   {[
-                    { label: 'Student IDs & Passwords', count: credentials?.length || 0, tab: 'credentials', highlight: true },
-                    { label: 'Enrolled Students', count: students.length, tab: 'students' },
+                    { label: 'Student IDs & Passwords', count: activeCredentials?.length || 0, tab: 'credentials', highlight: true },
+                    { label: 'Active Enrolled Students', count: countActiveStudents(students), tab: 'students' },
                     { label: 'Mark Foil Generator', count: students.length, tab: 'markFoil', highlight: true },
                     { label: 'Faculty Members', count: faculty.length, tab: 'faculty' },
                     { label: 'Course Syllabi', count: syllabuses.length, tab: 'syllabus' },
@@ -1139,12 +1171,14 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                 <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
                   <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-xl">
                     <span className="text-[10px] text-slate-500 uppercase font-bold block">
-                      Total Enrolled
+                      Active Enrolled
                     </span>
                     <span className="text-xl font-bold text-slate-900 mt-0.5 block font-serif-academic">
-                      {students.length}
+                      {countActiveStudents(students)}
                     </span>
-                    <span className="text-[10px] text-slate-400">All registered scholars</span>
+                    <span className="text-[10px] text-slate-400">
+                      Active scholars ({students.length - countActiveStudents(students)} non-active)
+                    </span>
                   </div>
 
                   <div className="p-3.5 bg-blue-50/50 border border-blue-200 rounded-xl">
@@ -1152,9 +1186,9 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                       UG NEP Stream
                     </span>
                     <span className="text-xl font-bold text-blue-900 mt-0.5 block font-serif-academic">
-                      {students.filter((s) => s.course?.toLowerCase().includes('nep')).length}
+                      {students.filter((s) => isStudentActive(s) && s.course?.toLowerCase().includes('nep')).length}
                     </span>
-                    <span className="text-[10px] text-blue-500">Under Graduate NEP</span>
+                    <span className="text-[10px] text-blue-500">Under Graduate NEP (Active)</span>
                   </div>
 
                   <div className="p-3.5 bg-teal-50/50 border border-teal-200 rounded-xl">
@@ -1162,9 +1196,9 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                       UG AEDP Stream
                     </span>
                     <span className="text-xl font-bold text-teal-900 mt-0.5 block font-serif-academic">
-                      {students.filter((s) => s.course?.toLowerCase().includes('aedp')).length}
+                      {students.filter((s) => isStudentActive(s) && s.course?.toLowerCase().includes('aedp')).length}
                     </span>
-                    <span className="text-[10px] text-teal-500">Under Graduate AEDP</span>
+                    <span className="text-[10px] text-teal-500">Under Graduate AEDP (Active)</span>
                   </div>
 
                   <div className="p-3.5 bg-emerald-50/50 border border-emerald-200 rounded-xl">
@@ -1172,9 +1206,9 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                       UG CBCS Stream
                     </span>
                     <span className="text-xl font-bold text-emerald-900 mt-0.5 block font-serif-academic">
-                      {students.filter((s) => s.course?.toLowerCase().includes('cbcs')).length}
+                      {students.filter((s) => isStudentActive(s) && s.course?.toLowerCase().includes('cbcs')).length}
                     </span>
-                    <span className="text-[10px] text-emerald-500">Under Graduate CBCS</span>
+                    <span className="text-[10px] text-emerald-500">Under Graduate CBCS (Active)</span>
                   </div>
 
                   <div className="p-3.5 bg-purple-50/50 border border-purple-200 rounded-xl">
@@ -1182,9 +1216,9 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                       PG Stream
                     </span>
                     <span className="text-xl font-bold text-purple-900 mt-0.5 block font-serif-academic">
-                      {students.filter((s) => s.course?.toLowerCase().includes('pg') || s.course?.toLowerCase().includes('m.sc')).length}
+                      {students.filter((s) => isStudentActive(s) && (s.course?.toLowerCase().includes('pg') || s.course?.toLowerCase().includes('m.sc'))).length}
                     </span>
-                    <span className="text-[10px] text-purple-500">Post Graduate Scholars</span>
+                    <span className="text-[10px] text-purple-500">Post Graduate Scholars (Active)</span>
                   </div>
                 </div>
 
@@ -1239,10 +1273,23 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                       <option value="2nd Year">2nd Year</option>
                       <option value="3rd Year">3rd Year</option>
                     </select>
+
+                    {/* Status Filter (Admin View) */}
+                    <select
+                      value={studentStatusFilter}
+                      onChange={(e) => setStudentStatusFilter(e.target.value)}
+                      className="px-3 py-2 rounded-lg border border-slate-200 bg-white text-xs font-semibold focus:outline-hidden"
+                    >
+                      <option value="All">All Statuses (Admin)</option>
+                      <option value="Active">Active Only</option>
+                      <option value="Back">Back</option>
+                      <option value="CLC Taken">CLC Taken</option>
+                      <option value="Graduated">Graduated</option>
+                    </select>
                   </div>
 
                   <div className="text-[11px] font-semibold text-slate-500 shrink-0 text-right">
-                    Showing <strong className="text-slate-900">{filteredAdminStudents.length}</strong> of {students.length} students
+                    Showing <strong className="text-slate-900">{filteredAdminStudents.length}</strong> of {students.length} students ({countActiveStudents(students)} Active)
                   </div>
                 </div>
 
@@ -1252,10 +1299,11 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                     <table className="w-full text-left text-xs text-slate-700">
                       <thead className="bg-[#0c2340] text-white uppercase text-[10px] tracking-wider font-semibold">
                         <tr>
-                          <th className="py-3 px-4">Roll No / Reg</th>
+                          <th className="py-3 px-4">College Roll No / University Roll No</th>
                           <th className="py-3 px-4">Student Name & Photo</th>
                           <th className="py-3 px-4">Course</th>
                           <th className="py-3 px-4">Year, Admission Batch & Semester</th>
+                          <th className="py-3 px-4">Status</th>
                           <th className="py-3 px-4">Category</th>
                           <th className="py-3 px-4">Contact</th>
                           <th className="py-3 px-4 text-right">Admin Actions</th>
@@ -1264,15 +1312,16 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                       <tbody className="divide-y divide-slate-100">
                         {filteredAdminStudents.length === 0 ? (
                           <tr>
-                            <td colSpan={7} className="text-center py-12 text-slate-400">
+                            <td colSpan={8} className="text-center py-12 text-slate-400">
                               <p className="font-medium text-slate-600">No students match the current criteria.</p>
-                              {(studentSearchTerm || studentCourseFilter !== 'All' || studentYearFilter !== 'All' || studentLevelFilter !== 'All') && (
+                              {(studentSearchTerm || studentCourseFilter !== 'All' || studentYearFilter !== 'All' || studentLevelFilter !== 'All' || studentStatusFilter !== 'All') && (
                                 <button
                                   onClick={() => {
                                     setStudentSearchTerm('');
                                     setStudentCourseFilter('All');
                                     setStudentYearFilter('All');
                                     setStudentLevelFilter('All');
+                                    setStudentStatusFilter('All');
                                   }}
                                   className="mt-2 text-xs font-bold text-blue-700 hover:underline cursor-pointer"
                                 >
@@ -1284,16 +1333,16 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                         ) : (
                           filteredAdminStudents.map((s) => (
                             <tr key={s.id} className="hover:bg-blue-50/30 transition group">
-                              {/* Roll / Reg / Barcode */}
-                              <td className="py-3 px-4 font-mono font-bold text-slate-900">
-                                <div>{s.rollNumber}</div>
+                              {/* College Roll No / University Roll No / Barcode */}
+                              <td className="py-3 px-4 font-mono text-slate-900">
+                                <div className="font-bold text-slate-900 leading-snug" title="College Roll No">{s.rollNumber}</div>
                                 {s.barcode && (
                                   <div className="text-[10px] text-indigo-700 font-semibold">
                                     BC: {s.barcode}
                                   </div>
                                 )}
-                                <div className="text-[10px] text-slate-400 font-normal">
-                                  {s.registrationNumber || 'Pending Reg'}
+                                <div className="text-[10px] text-slate-500 font-medium leading-snug" title="University Roll No">
+                                  {s.registrationNumber || <span className="text-slate-400 font-normal italic">Pending University Roll</span>}
                                 </div>
                               </td>
 
@@ -1343,6 +1392,21 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                                 <div className="text-[11px] text-amber-700 font-semibold">
                                   {s.semester}
                                 </div>
+                              </td>
+
+                              {/* Academic Status */}
+                              <td className="py-3 px-4">
+                                {(() => {
+                                  const statusInfo = getStudentStatusInfo(s.academicStatus);
+                                  return (
+                                    <span
+                                      className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-bold border shadow-2xs whitespace-nowrap ${statusInfo.badgeClass}`}
+                                    >
+                                      <span className={`w-1.5 h-1.5 rounded-full ${statusInfo.dotClass}`} />
+                                      <span>{statusInfo.label}</span>
+                                    </span>
+                                  );
+                                })()}
                               </td>
 
                               {/* Category */}
@@ -1451,7 +1515,19 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                     </p>
                   </div>
 
-                  <div className="flex items-center gap-2 shrink-0">
+                  <div className="flex flex-wrap items-center gap-2 shrink-0">
+                    <button
+                      onClick={async () => {
+                        const res = await purgeInactiveStudentCredentials();
+                        alert(`Purging complete: Removed credentials for non-active students (${res.purgedCount} purged from database).`);
+                      }}
+                      className="px-3.5 py-2 bg-rose-50 hover:bg-rose-100 border border-rose-200 text-rose-700 font-bold rounded-xl text-xs flex items-center gap-1.5 transition cursor-pointer"
+                      title="Purge Student ID & Password for non-active students (Back, CLC Taken, Graduated)"
+                    >
+                      <Trash2 className="w-3.5 h-3.5 text-rose-600" />
+                      <span>Purge Non-Active Credentials</span>
+                    </button>
+
                     <button
                       onClick={() =>
                         setAddCredModal({
@@ -1485,12 +1561,12 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                 <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
                   <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-xl">
                     <span className="text-[10px] text-slate-500 uppercase font-bold block">
-                      Total Credentials
+                      Active Credentials
                     </span>
                     <span className="text-xl font-bold text-slate-900 mt-0.5 block font-serif-academic">
-                      {credentials?.length || 0}
+                      {activeCredentials?.length || 0}
                     </span>
-                    <span className="text-[10px] text-slate-400">All registered scholars</span>
+                    <span className="text-[10px] text-slate-400">Active scholars only</span>
                   </div>
 
                   <div className="p-3.5 bg-blue-50/50 border border-blue-200 rounded-xl">
@@ -1498,7 +1574,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                       UG NEP Stream
                     </span>
                     <span className="text-xl font-bold text-blue-900 mt-0.5 block font-serif-academic">
-                      {credentials?.filter((c) => c.course?.includes('NEP')).length || 0}
+                      {activeCredentials?.filter((c) => c.course?.includes('NEP')).length || 0}
                     </span>
                     <span className="text-[10px] text-blue-500">Under Graduate NEP</span>
                   </div>
@@ -1508,7 +1584,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                       UG AEDP Stream
                     </span>
                     <span className="text-xl font-bold text-teal-900 mt-0.5 block font-serif-academic">
-                      {credentials?.filter((c) => c.course?.includes('AEDP')).length || 0}
+                      {activeCredentials?.filter((c) => c.course?.includes('AEDP')).length || 0}
                     </span>
                     <span className="text-[10px] text-teal-500">Under Graduate AEDP</span>
                   </div>
@@ -1518,7 +1594,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                       UG CBCS Stream
                     </span>
                     <span className="text-xl font-bold text-emerald-900 mt-0.5 block font-serif-academic">
-                      {credentials?.filter((c) => c.course?.includes('CBCS')).length || 0}
+                      {activeCredentials?.filter((c) => c.course?.includes('CBCS')).length || 0}
                     </span>
                     <span className="text-[10px] text-emerald-500">Under Graduate CBCS</span>
                   </div>
@@ -1528,7 +1604,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                       PG Stream
                     </span>
                     <span className="text-xl font-bold text-purple-900 mt-0.5 block font-serif-academic">
-                      {credentials?.filter((c) => c.course?.includes('PG')).length || 0}
+                      {activeCredentials?.filter((c) => c.course?.includes('PG')).length || 0}
                     </span>
                     <span className="text-[10px] text-purple-500">Post Graduate Scholars</span>
                   </div>
@@ -2525,10 +2601,10 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                       <div>
                         <div className="flex items-center justify-between mb-1">
                           <label className="block text-slate-700 font-semibold">
-                            Enrolled Students
+                            Active Enrolled Students
                           </label>
-                          <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-1.5 py-0.2 rounded" title="Auto-synced from live Student database">
-                            Real-Time: {students.length}
+                          <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-1.5 py-0.2 rounded" title="Auto-synced from live Active Student database">
+                            Real-Time Active: {countActiveStudents(students)}
                           </span>
                         </div>
                         <input

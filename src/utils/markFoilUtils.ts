@@ -130,6 +130,28 @@ export function calculateMarkFoilPages(
 }
 
 /**
+ * Sorts student entries in dictionary (natural alphanumeric) order by roll number.
+ * e.g. "24MAT001", "24MAT002", "24MAT010"
+ * Empty roll numbers are placed at the end.
+ */
+export function sortEntriesInDictionaryOrder(
+  list: MarkFoilStudentEntry[]
+): MarkFoilStudentEntry[] {
+  return [...list].sort((a, b) => {
+    const rollA = (a.rollNumber || '').trim();
+    const rollB = (b.rollNumber || '').trim();
+    if (!rollA && !rollB) {
+      const nameA = (a.name || '').trim();
+      const nameB = (b.name || '').trim();
+      return nameA.localeCompare(nameB, undefined, { numeric: true, sensitivity: 'base' });
+    }
+    if (!rollA) return 1;
+    if (!rollB) return -1;
+    return rollA.localeCompare(rollB, undefined, { numeric: true, sensitivity: 'base' });
+  });
+}
+
+/**
  * Generates an authentic downloadable vector PDF (.pdf) matching the official
  * dual-column University Mark Foil format. If students exceed one sheet (e.g. >25 in twin mode
  * or >50 in continuous mode), multiple pages (Page 1 of N, Page 2 of N...) are automatically generated.
@@ -149,7 +171,10 @@ export function generateMarkFoilPDF(
   const cellHeightPreset = options?.cellHeightPreset || config.cellHeightPreset || 'generous';
   const fontSizePreset = options?.fontSizePreset || config.fontSizePreset || 'large';
 
-  const totalPages = calculateMarkFoilPages(entries.length, mode, totalRows);
+  // Ensure entries are sorted in dictionary order by roll number
+  const sortedEntries = mode === 'blank' ? [] : sortEntriesInDictionaryOrder(entries);
+
+  const totalPages = calculateMarkFoilPages(sortedEntries.length, mode, totalRows);
 
   const doc = new jsPDF({
     orientation: 'portrait',
@@ -176,11 +201,11 @@ export function generateMarkFoilPDF(
   const totalTableH = th1Height + th2Height + totalRows * rowHeight;
 
   // Calculate total vertical height of printing area for vertical centering on A4 (297mm)
-  // Header: 27.5mm, Table: totalTableH, Footer: 13.5mm (or 17.5mm with examiner name)
-  const headerHeight = 27.5;
+  // Header: 32mm (including College Name), Table: totalTableH, Footer: 13.5mm (or 17.5mm with examiner name)
+  const headerHeight = 32.0;
   const footerHeight = config.examinerName ? 17.5 : 13.5;
   const totalContentH = headerHeight + totalTableH + footerHeight;
-  const startY = Math.max(8, Math.round(((297 - totalContentH) / 2) * 10) / 10);
+  const startY = Math.max(6, Math.round(((297 - totalContentH) / 2) * 10) / 10);
 
   // Typography sizes in pt matching official university format and on-screen preview
   const fontMeta = fontSizePreset === 'extralarge' ? 12 : fontSizePreset === 'standard' ? 10 : 11;
@@ -203,11 +228,11 @@ export function generateMarkFoilPDF(
     }
     if (mode === 'continuous') {
       const start = (pageIdx * 2 + colIndex) * totalRows;
-      return entries.slice(start, start + totalRows);
+      return sortedEntries.slice(start, start + totalRows);
     }
     // 'twin' mode: both left & right show the same cohort for this page
     const start = pageIdx * totalRows;
-    return entries.slice(start, start + totalRows);
+    return sortedEntries.slice(start, start + totalRows);
   };
 
   const columns = [
@@ -223,6 +248,11 @@ export function generateMarkFoilPDF(
     columns.forEach(({ x, index }) => {
       const colEntries = getEntriesForColumn(pageIdx, index);
 
+      // 0. College Header in Bold Capital at top of both halves
+      doc.setFont('times', 'bold');
+      doc.setFontSize(fontMeta + 1.5);
+      doc.text('PANCHAYAT COLLEGE, BARAGADA', x + colWidth / 2, startY + 3.2, { align: 'center' });
+
       // 1. Header Metadata Section
       doc.setFont('times', 'normal');
       doc.setFontSize(fontMeta);
@@ -233,40 +263,40 @@ export function generateMarkFoilPDF(
         config.setNumber && config.date
           ? `Set / Year ${config.setNumber} / ${config.date.slice(-4) || '2026'}${pageIndicator}`
           : `Set / Year..................${pageIndicator}`;
-      doc.text(setYearText, x + colWidth - 1, startY + 3.8, { align: 'right' });
+      doc.text(setYearText, x + colWidth - 1, startY + 7.8, { align: 'right' });
 
       // Examination
       const examText = config.examinationName
         ? `EXAMINATION  ${config.examinationName}`
         : 'EXAMINATION ..............................................';
-      doc.text(examText, x, startY + 8.5);
+      doc.text(examText, x, startY + 12.8);
 
       // Subject
       const subjectText = config.subject
         ? `Subject  ${config.subject}`
         : 'Subject ....................................................';
-      doc.text(subjectText, x, startY + 13.5);
+      doc.text(subjectText, x, startY + 17.8);
 
       // Paper & Full Marks
       const paperVal = config.paperName || '.............................';
       const marksVal = config.fullMarks || '...............';
       const paperFullMarksText = `Paper  ${paperVal}   Full Marks  ${marksVal}`;
-      doc.text(paperFullMarksText, x, startY + 18.5);
+      doc.text(paperFullMarksText, x, startY + 22.8);
 
       // Course No.
       doc.setFont('times', 'bold');
       const courseNoText = config.courseNo
         ? `Course No.  ${config.courseNo}`
         : 'Course No. .................................................';
-      doc.text(courseNoText, x, startY + 23.5);
+      doc.text(courseNoText, x, startY + 27.8);
 
       // Solid horizontal line below Course No.
       doc.setDrawColor(0, 0, 0);
       doc.setLineWidth(0.4);
-      doc.line(x, startY + 25.5, x + colWidth, startY + 25.5);
+      doc.line(x, startY + 29.8, x + colWidth, startY + 29.8);
 
       // 2. Marks Table
-      const tableY = startY + 27.5;
+      const tableY = startY + 32.0;
 
       // Outer table rectangle
       doc.setLineWidth(0.35);
@@ -384,7 +414,10 @@ export function generateMarkFoilWordDocument(
   const cellHeightPreset = options?.cellHeightPreset || config.cellHeightPreset || 'generous';
   const fontSizePreset = options?.fontSizePreset || config.fontSizePreset || 'large';
 
-  const totalPages = calculateMarkFoilPages(entries.length, mode, totalRows);
+  // Ensure entries are sorted in dictionary order by roll number
+  const sortedEntries = mode === 'blank' ? [] : sortEntriesInDictionaryOrder(entries);
+
+  const totalPages = calculateMarkFoilPages(sortedEntries.length, mode, totalRows);
 
   const baseTargetPt = cellHeightPreset === 'extra' ? 620 : cellHeightPreset === 'standard' ? 550 : 585;
   const rowPt = Math.max(18, Math.min(28, Math.floor(baseTargetPt / totalRows)));
@@ -406,10 +439,10 @@ export function generateMarkFoilWordDocument(
     if (mode === 'blank') return [];
     if (mode === 'continuous') {
       const start = (pageIdx * 2 + colIndex) * totalRows;
-      return entries.slice(start, start + totalRows);
+      return sortedEntries.slice(start, start + totalRows);
     }
     const start = pageIdx * totalRows;
-    return entries.slice(start, start + totalRows);
+    return sortedEntries.slice(start, start + totalRows);
   };
 
   const renderSingleSlipHtml = (pageIdx: number, colIndex: number): string => {
@@ -465,6 +498,10 @@ export function generateMarkFoilWordDocument(
 
     return `
       <div style="font-family: 'Times New Roman', Times, serif; color: #000000; margin: 0; padding: 0;">
+        <!-- College Header in Bold Capital -->
+        <div style="text-align: center; font-size: ${fontMeta}; font-weight: bold; text-transform: uppercase; margin-bottom: 3pt; letter-spacing: 0.5px; mso-line-height-rule: exactly; line-height: ${fontLineHeight};">
+          PANCHAYAT COLLEGE, BARAGADA
+        </div>
         <!-- Header -->
         <div style="text-align: right; font-size: ${fontMeta}; margin-bottom: 2pt; mso-line-height-rule: exactly; line-height: ${fontLineHeight};">
           ${setYearText}
@@ -641,7 +678,10 @@ export function printMarkFoil(
   const cellHeightPreset = options?.cellHeightPreset || config.cellHeightPreset || 'generous';
   const fontSizePreset = options?.fontSizePreset || config.fontSizePreset || 'large';
 
-  const totalPages = calculateMarkFoilPages(entries.length, mode, totalRows);
+  // Ensure entries are sorted in dictionary order by roll number
+  const sortedEntries = mode === 'blank' ? [] : sortEntriesInDictionaryOrder(entries);
+
+  const totalPages = calculateMarkFoilPages(sortedEntries.length, mode, totalRows);
 
   const baseTargetPx = cellHeightPreset === 'extra' ? 760 : cellHeightPreset === 'standard' ? 670 : 720;
   const rowPx = Math.max(22, Math.min(36, Math.floor(baseTargetPx / totalRows)));
@@ -658,10 +698,10 @@ export function printMarkFoil(
     if (mode === 'blank') return [];
     if (mode === 'continuous') {
       const start = (pageIdx * 2 + colIndex) * totalRows;
-      return entries.slice(start, start + totalRows);
+      return sortedEntries.slice(start, start + totalRows);
     }
     const start = pageIdx * totalRows;
-    return entries.slice(start, start + totalRows);
+    return sortedEntries.slice(start, start + totalRows);
   };
 
   const renderFoilSlipHtml = (pageIdx: number, colIndex: number) => {
@@ -711,6 +751,8 @@ export function printMarkFoil(
 
     return `
       <div class="foil-sheet">
+        <!-- College Header in Bold Capital -->
+        <div class="foil-college-header">PANCHAYAT COLLEGE, BARAGADA</div>
         <!-- Header -->
         <div class="foil-top-right">${setYearText}</div>
         <div class="foil-meta-line">${examText}</div>
@@ -853,6 +895,15 @@ export function printMarkFoil(
           width: 1px;
           border-left: 1px dashed #777;
           align-self: stretch;
+        }
+        .foil-college-header {
+          text-align: center;
+          font-size: ${fontMeta};
+          font-weight: bold;
+          text-transform: uppercase;
+          letter-spacing: 0.5px;
+          margin-bottom: 3px;
+          line-height: 1.2;
         }
         .foil-top-right {
           text-align: right;
@@ -1032,8 +1083,9 @@ export function exportMarkFoilCSV(
   config: MarkFoilConfig,
   entries: MarkFoilStudentEntry[]
 ): void {
+  const sortedEntries = sortEntriesInDictionaryOrder(entries);
   const headers = ['Roll/Code Number', 'Marks In Figures', 'Marks In Words'];
-  const rows = entries.map((e) => [
+  const rows = sortedEntries.map((e) => [
     `"${e.rollNumber}"`,
     `"${e.marksInFigures || ''}"`,
     `"${e.marksInWords || ''}"`,

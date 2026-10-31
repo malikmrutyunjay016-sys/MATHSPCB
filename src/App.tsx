@@ -1500,7 +1500,16 @@ function AppContent() {
           });
           // Also keep credentials state in sync with students
           const uid = s.uniqueId || s.rollNumber.trim();
+          const isStatusActive = (s.academicStatus || 'Active').trim().toLowerCase() === 'active';
+
           setCredentials((prev) => {
+            const filtered = prev.filter(
+              (c) => c.uniqueId !== uid && c.studentId !== s.id && c.rollNumber !== s.rollNumber && c.id !== uid
+            );
+            if (!isStatusActive) {
+              return filtered;
+            }
+
             const idx = prev.findIndex((c) => c.uniqueId === uid || c.studentId === s.id || c.rollNumber === s.rollNumber);
             const credObj: StudentCredential = {
               id: uid,
@@ -1514,12 +1523,7 @@ function AppContent() {
               createdAt: idx >= 0 ? prev[idx].createdAt : new Date().toISOString(),
               updatedAt: new Date().toISOString(),
             };
-            if (idx >= 0) {
-              const copy = [...prev];
-              copy[idx] = credObj;
-              return copy;
-            }
-            return [...prev, credObj];
+            return [...filtered, credObj];
           });
         }}
         onClose={() => setStudentModal({ isOpen: false, item: null })}
@@ -1726,7 +1730,16 @@ function AppContent() {
             return [savedStudent, ...prev];
           });
           const uid = cred?.uniqueId || savedStudent.uniqueId || savedStudent.rollNumber.trim();
+          const isStatusActive = (savedStudent.academicStatus || 'Active').trim().toLowerCase() === 'active';
+
           setCredentials((prev) => {
+            const filtered = prev.filter(
+              (c) => c.uniqueId !== uid && c.studentId !== savedStudent.id && c.rollNumber !== savedStudent.rollNumber && c.id !== uid
+            );
+            if (!isStatusActive) {
+              return filtered;
+            }
+
             const idx = prev.findIndex((c) => c.uniqueId === uid || c.studentId === savedStudent.id || c.rollNumber === savedStudent.rollNumber);
             const credObj: StudentCredential = cred || {
               id: uid,
@@ -1740,12 +1753,7 @@ function AppContent() {
               createdAt: idx >= 0 ? prev[idx].createdAt : new Date().toISOString(),
               updatedAt: new Date().toISOString(),
             };
-            if (idx >= 0) {
-              const copy = [...prev];
-              copy[idx] = credObj;
-              return copy;
-            }
-            return [credObj, ...prev];
+            return [credObj, ...filtered];
           });
         }}
       />

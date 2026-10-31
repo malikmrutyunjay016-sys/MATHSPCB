@@ -20,6 +20,7 @@ import {
   ChevronLeft,
   ChevronRight,
   BookOpen,
+  ArrowDownAZ,
 } from 'lucide-react';
 import { Student } from '../types';
 import {
@@ -31,6 +32,7 @@ import {
   generateMarkFoilWordDocument,
   printMarkFoil,
   exportMarkFoilCSV,
+  sortEntriesInDictionaryOrder,
 } from '../utils/markFoilUtils';
 
 interface MarkFoilGeneratorProps {
@@ -45,18 +47,21 @@ export const MarkFoilGenerator: React.FC<MarkFoilGeneratorProps> = ({
   const [selectedYear, setSelectedYear] = useState<string>('2024–25');
   const [selectedSemester, setSelectedSemester] = useState<string>('Semester II');
 
-  // Examination metadata configuration
+  // Roll number format selection: 'college' (College Roll No), 'university' (University Roll No), or 'both'
+  const [rollNumberType, setRollNumberType] = useState<'college' | 'university' | 'both'>('college');
+
+  // Examination metadata configuration (default blank details)
   const [config, setConfig] = useState<MarkFoilConfig>({
     universityName: 'SAMBALPUR UNIVERSITY',
     examinationCell: 'PRIVATE EXAMINATION CELL',
-    setNumber: 'Set. 01',
-    examinationName: 'PG 2nd semester Private 2024',
+    setNumber: '',
+    examinationName: '',
     subject: 'Mathematics',
-    paperName: 'COMBINATORICS',
-    fullMarks: '80',
-    courseNo: 'MAT-544',
-    examinerName: 'Mrutyunjay Malik',
-    date: new Date().toLocaleDateString('en-GB'),
+    paperName: '',
+    fullMarks: '',
+    courseNo: '',
+    examinerName: '',
+    date: '',
     totalRows: 25,
     layout: 'dual',
     foilMode: 'twin',
@@ -77,22 +82,32 @@ export const MarkFoilGenerator: React.FC<MarkFoilGeneratorProps> = ({
   const [currentPage, setCurrentPage] = useState<number>(0);
   const [viewAllPages, setViewAllPages] = useState<boolean>(false);
 
-  // Auto-suggest examination title when filters change
-  useEffect(() => {
-    const semShort = selectedSemester.replace('Semester ', '');
-    const courseShort = selectedCourse === 'PG' ? 'PG' : 'UG';
-    const yearMatch = selectedYear.split('–')[0] || '2026';
-    setConfig((prev) => ({
-      ...prev,
-      examinationName: `${courseShort} ${semShort}${
-        semShort === '1' ? 'st' : semShort === '2' ? 'nd' : semShort === '3' ? 'rd' : 'th'
-      } semester Private ${yearMatch}`,
-    }));
-  }, [selectedCourse, selectedSemester, selectedYear]);
+  // Helper to extract the preferred roll number format
+  const getStudentRollValue = (s: Student, type: 'college' | 'university' | 'both'): string => {
+    const collegeRoll = (s.rollNumber || '').trim();
+    const univRoll = (s.registrationNumber || '').trim();
+    if (type === 'college') {
+      return collegeRoll || univRoll || s.uniqueId || '';
+    }
+    if (type === 'university') {
+      return univRoll || collegeRoll || s.uniqueId || '';
+    }
+    // 'both'
+    if (collegeRoll && univRoll) {
+      return `${collegeRoll} / ${univRoll}`;
+    }
+    return collegeRoll || univRoll || s.uniqueId || '';
+  };
 
-  // Enrolled students matching the chosen Course, Academic Year, and Semester
+  // Enrolled students matching the chosen Course, Academic Year, and Semester (excluding students with status 'CLC Taken')
   const enrolledStudents = useMemo(() => {
     return students.filter((s) => {
+      // Exclude students who have taken CLC (College Leaving Certificate)
+      const st = (s.academicStatus || '').trim().toLowerCase();
+      if (st === 'clc taken' || st === 'clc_taken' || st === 'clc') {
+        return false;
+      }
+
       // Course match
       const matchCourse =
         selectedCourse === 'All' ||
@@ -125,6 +140,66 @@ export const MarkFoilGenerator: React.FC<MarkFoilGeneratorProps> = ({
     });
   }, [students, selectedCourse, selectedYear, selectedSemester]);
 
+  // Handle switching roll number format between College Roll No and University Roll No
+  const handleRollNumberTypeChange = (newType: 'college' | 'university' | 'both') => {
+    setRollNumberType(newType);
+    setEntries((prev) => {
+      let updated: MarkFoilStudentEntry[];
+      if (prev.length === 0 && enrolledStudents.length > 0) {
+        updated = enrolledStudents.map((s) => ({
+          id: s.id,
+          name: s.name,
+          rollNumber: getStudentRollValue(s, newType),
+          marksInFigures: '',
+          marksInWords: '',
+        }));
+      } else {
+        updated = prev.map((entry) => {
+          const matched = enrolledStudents.find(
+            (s) => s.id === entry.id || (s.name && entry.name && s.name.trim().toLowerCase() === entry.name.trim().toLowerCase())
+          );
+          if (matched) {
+            return {
+              ...entry,
+              rollNumber: getStudentRollValue(matched, newType),
+            };
+          }
+          return entry;
+        });
+      }
+      // Sort students with college roll no / university roll no in dictionary order
+      return sortEntriesInDictionaryOrder(updated);
+    });
+
+    const label =
+      newType === 'college'
+        ? 'College Roll No'
+        : newType === 'university'
+        ? 'University Roll No'
+        : 'College & University Roll No';
+    setStatusMessage({
+      text: `Cohort roll numbers updated to ${label} and sorted in dictionary order.`,
+      type: 'info',
+    });
+    setTimeout(() => setStatusMessage(null), 3000);
+  };
+
+  // Sort candidate entries in dictionary (natural alphanumeric) order by active roll number
+  const handleSortInDictionaryOrder = () => {
+    setEntries((prev) => sortEntriesInDictionaryOrder(prev));
+    const label =
+      rollNumberType === 'college'
+        ? 'College Roll No'
+        : rollNumberType === 'university'
+        ? 'University Roll No'
+        : 'Roll Number';
+    setStatusMessage({
+      text: `Sorted candidates with ${label} in dictionary order.`,
+      type: 'info',
+    });
+    setTimeout(() => setStatusMessage(null), 3000);
+  };
+
   // Initialize or populate student entries when selection changes
   useEffect(() => {
     // Try restoring saved draft for this combo from localStorage
@@ -135,7 +210,7 @@ export const MarkFoilGenerator: React.FC<MarkFoilGeneratorProps> = ({
       try {
         const parsed = JSON.parse(saved);
         if (Array.isArray(parsed) && parsed.length > 0) {
-          setEntries(parsed);
+          setEntries(sortEntriesInDictionaryOrder(parsed));
           return;
         }
       } catch (e) {
@@ -144,60 +219,18 @@ export const MarkFoilGenerator: React.FC<MarkFoilGeneratorProps> = ({
     }
 
     if (enrolledStudents.length > 0) {
-      const initialList: MarkFoilStudentEntry[] = enrolledStudents.map((s) => ({
-        id: s.id,
-        name: s.name,
-        rollNumber: s.rollNumber || s.registrationNumber || s.uniqueId || '18PPG23MT385',
-        marksInFigures: '',
-        marksInWords: '',
-      }));
+      const initialList: MarkFoilStudentEntry[] = sortEntriesInDictionaryOrder(
+        enrolledStudents.map((s) => ({
+          id: s.id,
+          name: s.name,
+          rollNumber: getStudentRollValue(s, rollNumberType),
+          marksInFigures: '',
+          marksInWords: '',
+        }))
+      );
       setEntries(initialList);
     } else {
-      // Sample entry matching the valuation cohort format
-      setEntries([
-        {
-          id: 'sample-1',
-          name: 'Candidate 1',
-          rollNumber: '18PPG23MT385',
-          marksInFigures: '64',
-          marksInWords: 'SIX FOUR',
-        },
-        {
-          id: 'sample-2',
-          name: 'Candidate 2',
-          rollNumber: '18PPG23MT386',
-          marksInFigures: '63',
-          marksInWords: 'SIX THREE',
-        },
-        {
-          id: 'sample-3',
-          name: 'Candidate 3',
-          rollNumber: '18PPG23MT387',
-          marksInFigures: '15',
-          marksInWords: 'ONE FIVE',
-        },
-        {
-          id: 'sample-4',
-          name: 'Candidate 4',
-          rollNumber: '18PPG23MT388',
-          marksInFigures: '72',
-          marksInWords: 'SEVEN TWO',
-        },
-        {
-          id: 'sample-5',
-          name: 'Candidate 5',
-          rollNumber: '18PPG23MT389',
-          marksInFigures: '08',
-          marksInWords: 'ZERO EIGHT',
-        },
-        {
-          id: 'sample-6',
-          name: 'Candidate 6',
-          rollNumber: '18PPG23MT390',
-          marksInFigures: 'AB',
-          marksInWords: 'ABSENT',
-        },
-      ]);
+      setEntries([]);
     }
   }, [enrolledStudents, selectedCourse, selectedYear, selectedSemester, config.courseNo]);
 
@@ -241,8 +274,8 @@ export const MarkFoilGenerator: React.FC<MarkFoilGeneratorProps> = ({
   const handleAddRow = () => {
     const newEntry: MarkFoilStudentEntry = {
       id: `custom-${Date.now()}`,
-      name: `Candidate ${entries.length + 1}`,
-      rollNumber: `18PPG${new Date().getFullYear().toString().slice(2)}MT${380 + entries.length + 1}`,
+      name: '',
+      rollNumber: '',
       marksInFigures: '',
       marksInWords: '',
     };
@@ -254,64 +287,7 @@ export const MarkFoilGenerator: React.FC<MarkFoilGeneratorProps> = ({
     setEntries((prev) => prev.filter((_, idx) => idx !== index));
   };
 
-  // Load sample valuation cohort
-  const handleLoadSamplePrivateCohort = () => {
-    const sampleCohort: MarkFoilStudentEntry[] = [
-      { id: 'sample-1', name: 'M.Sc. Candidate 1', rollNumber: '18PPG23MT385', marksInFigures: '64', marksInWords: 'SIX FOUR' },
-      { id: 'sample-2', name: 'M.Sc. Candidate 2', rollNumber: '18PPG23MT386', marksInFigures: '63', marksInWords: 'SIX THREE' },
-      { id: 'sample-3', name: 'M.Sc. Candidate 3', rollNumber: '18PPG23MT387', marksInFigures: '15', marksInWords: 'ONE FIVE' },
-      { id: 'sample-4', name: 'M.Sc. Candidate 4', rollNumber: '18PPG23MT388', marksInFigures: '72', marksInWords: 'SEVEN TWO' },
-      { id: 'sample-5', name: 'M.Sc. Candidate 5', rollNumber: '18PPG23MT389', marksInFigures: '08', marksInWords: 'ZERO EIGHT' },
-      { id: 'sample-6', name: 'M.Sc. Candidate 6', rollNumber: '18PPG23MT390', marksInFigures: 'AB', marksInWords: 'ABSENT' },
-    ];
-    setEntries(sampleCohort);
-    setCurrentPage(0);
-    setConfig((prev) => ({
-      ...prev,
-      examinationName: 'PG 2nd semester Private 2024',
-      subject: 'Mathematics',
-      paperName: 'COMBINATORICS',
-      fullMarks: '80',
-      courseNo: 'MAT-544',
-      setNumber: 'Set. 01',
-    }));
-    setStatusMessage({
-      text: 'Loaded sample PG valuation cohort (18PPG23MT385 – 390).',
-      type: 'success',
-    });
-    setTimeout(() => setStatusMessage(null), 3500);
-  };
 
-  // Load sample large cohort demonstrating multiple pages
-  const handleLoadSampleLargeCohort = () => {
-    const sampleLarge: MarkFoilStudentEntry[] = Array.from({ length: 62 }, (_, i) => {
-      const num = 385 + i;
-      const figures = i % 12 === 11 ? 'AB' : String(Math.floor(25 + ((i * 13) % 55)));
-      return {
-        id: `large-sample-${i + 1}`,
-        name: `Candidate ${i + 1}`,
-        rollNumber: `18PPG23MT${num}`,
-        marksInFigures: figures,
-        marksInWords: marksToWordsDigitByDigit(figures, config.wordCasing || 'upper'),
-      };
-    });
-    setEntries(sampleLarge);
-    setCurrentPage(0);
-    setConfig((prev) => ({
-      ...prev,
-      examinationName: 'PG 2nd semester Private 2024',
-      subject: 'Mathematics',
-      paperName: 'COMBINATORICS',
-      fullMarks: '80',
-      courseNo: 'MAT-544',
-      setNumber: 'Set. 01',
-    }));
-    setStatusMessage({
-      text: `Loaded 62 candidate cohort across 3 pages (${config.totalRows || 25} rows/page).`,
-      type: 'success',
-    });
-    setTimeout(() => setStatusMessage(null), 3500);
-  };
 
   // Re-run words casing transformation
   const handleToggleCasing = (casing: 'upper' | 'title' | 'lower') => {
@@ -390,13 +366,14 @@ export const MarkFoilGenerator: React.FC<MarkFoilGeneratorProps> = ({
   const getPageEntries = (pageIdx: number, colIdx: number): (MarkFoilStudentEntry | undefined)[] => {
     const rows = config.totalRows || 25;
     if (foilMode === 'blank') return [];
+    const sorted = sortEntriesInDictionaryOrder(entries);
     if (foilMode === 'continuous') {
       const start = (pageIdx * 2 + colIdx) * rows;
-      return entries.slice(start, start + rows);
+      return sorted.slice(start, start + rows);
     }
     // Twin mode: both slips show identical student slice for this page
     const start = pageIdx * rows;
-    return entries.slice(start, start + rows);
+    return sorted.slice(start, start + rows);
   };
 
   return (
@@ -534,23 +511,11 @@ export const MarkFoilGenerator: React.FC<MarkFoilGeneratorProps> = ({
               <Download className="w-3 h-3" />
               <span>Blank (Word)</span>
             </button>
-            <button
-              onClick={handleLoadSamplePrivateCohort}
-              className="text-[11px] text-amber-700 hover:text-amber-800 font-semibold underline cursor-pointer ml-1"
-            >
-              Load Sample Cohort (6 Candidates)
-            </button>
-            <button
-              onClick={handleLoadSampleLargeCohort}
-              className="text-[11px] text-blue-700 hover:text-blue-800 font-semibold underline cursor-pointer ml-1"
-            >
-              Load Large Cohort (62 Candidates &bull; 3 Pages)
-            </button>
           </div>
         </div>
 
-        {/* Dropdown Filters: Course, Academic Session, Semester */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        {/* Dropdown Filters: Course, Academic Session, Semester & Roll Number Selection */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           <div>
             <label className="block text-[11px] font-bold text-slate-600 uppercase tracking-wider mb-1">
               Course *
@@ -603,6 +568,80 @@ export const MarkFoilGenerator: React.FC<MarkFoilGeneratorProps> = ({
               <option value="All">All Semesters</option>
             </select>
           </div>
+
+          <div>
+            <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1 flex items-center justify-between">
+              <span>Roll Number Type *</span>
+              <span className="text-[10px] text-amber-700 font-bold lowercase">format</span>
+            </label>
+            <select
+              value={rollNumberType}
+              onChange={(e) => handleRollNumberTypeChange(e.target.value as 'college' | 'university' | 'both')}
+              className="w-full px-3 py-2 bg-white border-2 border-amber-400 rounded-lg text-xs font-bold text-[#0c2340] focus:outline-hidden focus:border-amber-600 shadow-xs"
+            >
+              <option value="college">College Roll No</option>
+              <option value="university">University Roll No</option>
+              <option value="both">Both (College Roll No / University Roll No)</option>
+            </select>
+          </div>
+        </div>
+
+        {/* Quick Segmented Toggle for College vs University Roll No */}
+        <div className="flex flex-wrap items-center justify-between gap-3 bg-amber-50/70 border border-amber-200/80 rounded-xl p-2.5">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-[11px] font-bold text-slate-700 uppercase tracking-wider">
+              Choose Roll Number:
+            </span>
+            <div className="inline-flex rounded-lg border border-slate-300 bg-white p-0.5 shadow-xs">
+              <button
+                type="button"
+                onClick={() => handleRollNumberTypeChange('college')}
+                className={`px-3 py-1.5 rounded-md text-xs font-bold transition cursor-pointer flex items-center gap-1 ${
+                  rollNumberType === 'college'
+                    ? 'bg-[#0c2340] text-amber-300 shadow-xs'
+                    : 'text-slate-700 hover:text-slate-900 hover:bg-slate-50'
+                }`}
+              >
+                <span>College Roll No</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => handleRollNumberTypeChange('university')}
+                className={`px-3 py-1.5 rounded-md text-xs font-bold transition cursor-pointer flex items-center gap-1 ${
+                  rollNumberType === 'university'
+                    ? 'bg-[#0c2340] text-amber-300 shadow-xs'
+                    : 'text-slate-700 hover:text-slate-900 hover:bg-slate-50'
+                }`}
+              >
+                <span>University Roll No</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => handleRollNumberTypeChange('both')}
+                className={`px-3 py-1.5 rounded-md text-xs font-bold transition cursor-pointer flex items-center gap-1 ${
+                  rollNumberType === 'both'
+                    ? 'bg-[#0c2340] text-amber-300 shadow-xs'
+                    : 'text-slate-700 hover:text-slate-900 hover:bg-slate-50'
+                }`}
+              >
+                <span>Both (College / Univ)</span>
+              </button>
+            </div>
+          </div>
+
+          <div className="text-[11px] text-slate-600 font-medium flex flex-wrap items-center gap-2">
+            <div>
+              Active: <span className="font-bold text-[#0c2340]">{rollNumberType === 'college' ? 'College Roll No' : rollNumberType === 'university' ? 'University Roll No' : 'College & University Roll No'}</span>
+              {enrolledStudents.length > 0 && (
+                <span className="text-slate-500 ml-1.5">
+                  ({enrolledStudents.length} candidate{enrolledStudents.length !== 1 ? 's' : ''} in cohort)
+                </span>
+              )}
+            </div>
+            <span className="text-[10.5px] bg-rose-50 text-rose-700 border border-rose-200 px-2 py-0.5 rounded font-semibold" title="Students with status 'CLC Taken' are automatically excluded from examination mark foils">
+              CLC Taken candidates excluded
+            </span>
+          </div>
         </div>
 
         {/* Examination & Paper Foil Headers */}
@@ -649,7 +688,7 @@ export const MarkFoilGenerator: React.FC<MarkFoilGeneratorProps> = ({
                 type="text"
                 value={config.paperName}
                 onChange={(e) => setConfig({ ...config, paperName: e.target.value })}
-                placeholder="COMBINATORICS"
+                placeholder="Paper Name"
                 className="w-full px-2.5 py-1.5 bg-white border border-slate-300 rounded text-xs font-medium"
               />
             </div>
@@ -662,7 +701,7 @@ export const MarkFoilGenerator: React.FC<MarkFoilGeneratorProps> = ({
                 type="text"
                 value={config.fullMarks}
                 onChange={(e) => setConfig({ ...config, fullMarks: e.target.value })}
-                placeholder="80"
+                placeholder="Full Marks"
                 className="w-full px-2.5 py-1.5 bg-white border border-slate-300 rounded text-xs font-medium"
               />
             </div>
@@ -675,7 +714,7 @@ export const MarkFoilGenerator: React.FC<MarkFoilGeneratorProps> = ({
                 type="text"
                 value={config.courseNo}
                 onChange={(e) => setConfig({ ...config, courseNo: e.target.value })}
-                placeholder="MAT-544"
+                placeholder="Course No."
                 className="w-full px-2.5 py-1.5 bg-white border border-slate-300 rounded text-xs font-bold text-[#0c2340]"
               />
             </div>
@@ -688,7 +727,7 @@ export const MarkFoilGenerator: React.FC<MarkFoilGeneratorProps> = ({
                 type="text"
                 value={config.setNumber}
                 onChange={(e) => setConfig({ ...config, setNumber: e.target.value })}
-                placeholder="Set. 01"
+                placeholder="Set / Year"
                 className="w-full px-2.5 py-1.5 bg-white border border-slate-300 rounded text-xs font-medium"
               />
             </div>
@@ -846,7 +885,16 @@ export const MarkFoilGenerator: React.FC<MarkFoilGeneratorProps> = ({
               </p>
             </div>
 
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                onClick={handleSortInDictionaryOrder}
+                className="px-3 py-1.5 rounded-lg bg-amber-50 hover:bg-amber-100 border border-amber-300 text-amber-900 text-xs font-bold flex items-center gap-1.5 transition cursor-pointer shadow-2xs"
+                title="Sort all candidates in dictionary (natural alphanumeric) order by active roll number"
+              >
+                <ArrowDownAZ className="w-3.5 h-3.5 text-amber-700" />
+                <span>Sort Roll No (A&rarr;Z)</span>
+              </button>
               <button
                 onClick={handleAddRow}
                 className="px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-semibold flex items-center gap-1 cursor-pointer"
@@ -900,7 +948,14 @@ export const MarkFoilGenerator: React.FC<MarkFoilGeneratorProps> = ({
                 <tr>
                   <th className="py-2.5 px-3 text-center w-12">#</th>
                   <th className="py-2.5 px-4">Student Name (On Screen)</th>
-                  <th className="py-2.5 px-4 w-48">Roll / Code Number *</th>
+                  <th className="py-2.5 px-4 w-52">
+                    <div className="flex flex-col">
+                      <span>Roll / Code Number *</span>
+                      <span className="text-[9px] font-semibold text-amber-300 normal-case tracking-normal">
+                        ({rollNumberType === 'college' ? 'College Roll No' : rollNumberType === 'university' ? 'University Roll No' : 'College / Univ Roll No'})
+                      </span>
+                    </div>
+                  </th>
                   <th className="py-2.5 px-4 w-32 text-center">In figures *</th>
                   <th className="py-2.5 px-4 w-56">In Words (Auto Generated) *</th>
                   <th className="py-2.5 px-3 text-center w-12">Action</th>
@@ -910,7 +965,7 @@ export const MarkFoilGenerator: React.FC<MarkFoilGeneratorProps> = ({
                 {entries.length === 0 ? (
                   <tr>
                     <td colSpan={6} className="py-8 text-center text-slate-500">
-                      No enrolled candidates found for the selected session and semester. Click <strong>"Add Candidate Row"</strong> or <strong>"Load Sample Cohort"</strong>.
+                      No candidate records found for the selected session and semester. Click <strong>&quot;Add Candidate Row&quot;</strong> to add candidates.
                     </td>
                   </tr>
                 ) : (
@@ -961,7 +1016,13 @@ export const MarkFoilGenerator: React.FC<MarkFoilGeneratorProps> = ({
                               type="text"
                               value={entry.rollNumber}
                               onChange={(e) => handleRollChange(idx, e.target.value)}
-                              placeholder="e.g. 18PPG23MT385"
+                              placeholder={
+                                rollNumberType === 'college'
+                                  ? 'College Roll No'
+                                  : rollNumberType === 'university'
+                                  ? 'University Roll No'
+                                  : 'College / Univ Roll No'
+                              }
                               className="w-full px-2.5 py-1.5 bg-white border border-slate-300 rounded font-mono text-xs font-bold text-[#0c2340] focus:outline-hidden focus:border-amber-500"
                             />
                           </td>
@@ -971,7 +1032,7 @@ export const MarkFoilGenerator: React.FC<MarkFoilGeneratorProps> = ({
                               type="text"
                               value={entry.marksInFigures}
                               onChange={(e) => handleMarkChange(idx, e.target.value)}
-                              placeholder="e.g. 64"
+                              placeholder="Marks"
                               maxLength={6}
                               className="w-24 text-center font-bold px-2 py-1.5 bg-amber-50 border border-amber-300 rounded text-slate-900 text-xs font-mono focus:outline-hidden focus:border-amber-600 focus:ring-1 focus:ring-amber-500"
                             />
@@ -1288,6 +1349,11 @@ export const MarkFoilGenerator: React.FC<MarkFoilGeneratorProps> = ({
 
                           return (
                             <div key={colIdx} className={`space-y-1.5 ${fontMetaSize} leading-snug`}>
+                              {/* College Header in Bold Capital */}
+                              <div className="text-center font-bold text-xs sm:text-[13px] uppercase tracking-wider font-serif text-black">
+                                PANCHAYAT COLLEGE, BARAGADA
+                              </div>
+
                               {/* Header matching print and PDF exactly */}
                               <div className="text-right font-medium mb-1">
                                 {setYearText}

@@ -38,8 +38,11 @@ export const DepartmentStats: React.FC<DepartmentStatsProps> = ({
   const permanentFacultyCount = permanentFacultyList.length;
   const guestFacultyCount = guestFacultyList.length;
 
+  // Only count students whose status is 'Active' in student database stats
   const currentStudents = useMemo(() => {
-    return students || [];
+    return (students || []).filter(
+      (s) => (s?.academicStatus || 'Active').toLowerCase() === 'active'
+    );
   }, [students]);
 
   const studentCount = currentStudents.length;

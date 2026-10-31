@@ -12,6 +12,7 @@ import {
   DepartmentSettings,
   Facility,
 } from '../types';
+import { countActiveStudents } from '../utils/studentStatusUtils';
 import {
   GraduationCap,
   BookOpen,
@@ -202,7 +203,7 @@ export const HomePage: React.FC<HomePageProps> = ({
       <QuickAccessCards
         onNavigate={onNavigate}
         facultyCount={faculty.length}
-        studentCount={students.length}
+        studentCount={countActiveStudents(students || [])}
       />
 
       {/* 5. Calendar, Notice Board & Announcements Section */}

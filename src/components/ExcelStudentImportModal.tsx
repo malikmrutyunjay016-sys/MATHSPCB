@@ -291,12 +291,14 @@ export const ExcelStudentImportModal: React.FC<ExcelStudentImportModalProps> = (
             'student',
           ]);
 
-          // 2. Roll Number
+          // 2. College Roll Number
           const rawRoll = findValue(row, [
+            'collegerollno',
+            'collegerollnumber',
+            'collegeroll',
             'rollnumber',
             'rollno',
             'roll',
-            'universityrollno',
             'rollnum',
             'id',
           ]);
@@ -407,8 +409,12 @@ export const ExcelStudentImportModal: React.FC<ExcelStudentImportModalProps> = (
           // 12. Gender
           const gender = findValue(row, ['gender', 'sex']);
 
-          // Additional Metadata
+          // Additional Metadata - University Roll Number
           const regNo = findValue(row, [
+            'universityrollno',
+            'universityrollnumber',
+            'univrollno',
+            'univrollnumber',
             'registrationnumber',
             'regno',
             'registrationno',
@@ -506,7 +512,7 @@ export const ExcelStudentImportModal: React.FC<ExcelStudentImportModalProps> = (
   const downloadSampleTemplate = () => {
     const sampleData = [
       {
-        'Roll Number': 'MATH26-001',
+        'College Roll No': 'MATH26-001',
         'Barcode': '26BC1001',
         'Applicant Name': 'Siddharth Mohapatra',
         'Father Name': 'Mr. Ramesh Mohapatra',
@@ -520,10 +526,10 @@ export const ExcelStudentImportModal: React.FC<ExcelStudentImportModalProps> = (
         'Gender': 'Male',
         'Course': 'UG NEP',
         'Admission Batch': activeBatch,
-        'Registration Number': 'REG2026001',
+        'University Roll No': 'REG2026001',
       },
       {
-        'Roll Number': 'MATH26-002',
+        'College Roll No': 'MATH26-002',
         'Barcode': '26BC1002',
         'Applicant Name': 'Ananya Dash',
         'Father Name': 'Dr. Pravat Dash',
@@ -537,10 +543,10 @@ export const ExcelStudentImportModal: React.FC<ExcelStudentImportModalProps> = (
         'Gender': 'Female',
         'Course': 'UG NEP',
         'Admission Batch': activeBatch,
-        'Registration Number': 'REG2026002',
+        'University Roll No': 'REG2026002',
       },
       {
-        'Roll Number': 'PGMATH26-01',
+        'College Roll No': 'PGMATH26-01',
         'Barcode': '26BC2001',
         'Applicant Name': 'Rohan Kumar Meher',
         'Father Name': 'Sri Biranchi Meher',
@@ -554,7 +560,7 @@ export const ExcelStudentImportModal: React.FC<ExcelStudentImportModalProps> = (
         'Gender': 'Male',
         'Course': 'PG',
         'Admission Batch': activeBatch,
-        'Registration Number': 'SU2026PG001',
+        'University Roll No': 'SU2026PG001',
       },
     ];
 
@@ -792,7 +798,7 @@ export const ExcelStudentImportModal: React.FC<ExcelStudentImportModalProps> = (
                   <thead className="bg-[#0c2340] text-white uppercase text-[9.5px] tracking-wider font-semibold sticky top-0 z-10">
                     <tr>
                       <th className="py-2.5 px-3 w-8 text-center">Import</th>
-                      <th className="py-2.5 px-3">Roll No &amp; Barcode</th>
+                      <th className="py-2.5 px-3">College Roll &amp; Univ Roll / Barcode</th>
                       <th className="py-2.5 px-3">Applicant Name</th>
                       <th className="py-2.5 px-3">Father &amp; Mother Name</th>
                       <th className="py-2.5 px-3">Aadhaar No &amp; DOB</th>
@@ -820,10 +826,15 @@ export const ExcelStudentImportModal: React.FC<ExcelStudentImportModalProps> = (
                           />
                         </td>
                         <td className="py-2 px-3 font-mono font-bold text-slate-900">
-                          <div>{item.student.rollNumber}</div>
+                          <div title="College Roll No">{item.student.rollNumber}</div>
                           {item.student.barcode && (
                             <div className="text-[9.5px] text-indigo-600 font-semibold">
                               BC: {item.student.barcode}
+                            </div>
+                          )}
+                          {item.student.registrationNumber && (
+                            <div className="text-[9.5px] text-slate-500 font-normal" title="University Roll No">
+                              Univ: {item.student.registrationNumber}
                             </div>
                           )}
                         </td>
