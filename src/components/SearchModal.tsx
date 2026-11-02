@@ -21,6 +21,7 @@ import {
   Syllabus,
   TimeTableSlot,
 } from '../types';
+import { formatDateToDDMMYYYY } from '../utils/dateFormatter';
 
 interface SearchModalProps {
   isOpen: boolean;
@@ -398,7 +399,7 @@ export const SearchModal: React.FC<SearchModalProps> = ({
                         <div>
                           <p className="font-semibold text-slate-800">{n.title}</p>
                           <p className="text-[11px] text-slate-500">
-                            {n.date} • {n.category}
+                            {formatDateToDDMMYYYY(n.date)} • {n.category}
                           </p>
                         </div>
                         <ArrowRight className="w-3.5 h-3.5 text-slate-400" />

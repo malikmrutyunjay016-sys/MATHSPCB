@@ -10,11 +10,8 @@ import {
   Eye,
   CheckCircle2,
   AlertCircle,
-  FileText,
   Filter,
   Layers,
-  Save,
-  HelpCircle,
   FileCode,
   Copy,
   ChevronLeft,
@@ -29,11 +26,11 @@ import {
   marksToWordsDigitByDigit,
   calculateMarkFoilPages,
   generateMarkFoilPDF,
-  generateMarkFoilWordDocument,
   printMarkFoil,
   exportMarkFoilCSV,
   sortEntriesInDictionaryOrder,
 } from '../utils/markFoilUtils';
+import { formatDateToDDMMYYYY } from '../utils/dateFormatter';
 
 interface MarkFoilGeneratorProps {
   students: Student[];
@@ -48,7 +45,7 @@ export const MarkFoilGenerator: React.FC<MarkFoilGeneratorProps> = ({
   const [selectedSemester, setSelectedSemester] = useState<string>('Semester II');
 
   // Roll number format selection: 'college' (College Roll No), 'university' (University Roll No), or 'both'
-  const [rollNumberType, setRollNumberType] = useState<'college' | 'university' | 'both'>('college');
+  const [rollNumberType, setRollNumberType] = useState<'college' | 'university' | 'both'>('university');
 
   // Examination metadata configuration (default blank details)
   const [config, setConfig] = useState<MarkFoilConfig>({
@@ -296,28 +293,6 @@ export const MarkFoilGenerator: React.FC<MarkFoilGeneratorProps> = ({
 
 
 
-  // Re-run words casing transformation
-  const handleToggleCasing = (casing: 'upper' | 'title' | 'lower') => {
-    setConfig((prev) => ({ ...prev, wordCasing: casing }));
-    setEntries((prev) =>
-      prev.map((e) => ({
-        ...e,
-        marksInWords: e.marksInFigures ? marksToWordsDigitByDigit(e.marksInFigures, casing) : '',
-      }))
-    );
-  };
-
-  // Save current foil draft
-  const handleSaveDraft = () => {
-    const draftKey = `mark_foil_${selectedCourse}_${selectedYear}_${selectedSemester}_${config.courseNo}`;
-    localStorage.setItem(draftKey, JSON.stringify(entries));
-    setStatusMessage({
-      text: `Draft saved locally for ${config.courseNo} (${entries.length} candidate rows).`,
-      type: 'success',
-    });
-    setTimeout(() => setStatusMessage(null), 3000);
-  };
-
   // Total pages calculation based on foilMode and totalRows
   const totalPages = useMemo(() => {
     const rows = config.totalRows || 25;
@@ -344,20 +319,7 @@ export const MarkFoilGenerator: React.FC<MarkFoilGeneratorProps> = ({
     setTimeout(() => setStatusMessage(null), 3500);
   };
 
-  // 2. Download Microsoft Word document (.doc) with multi-page support
-  const handleDownloadWordDoc = (modeOverride?: 'twin' | 'continuous' | 'blank') => {
-    const targetMode = modeOverride || foilMode;
-    const targetRows = config.totalRows || 25;
-    generateMarkFoilWordDocument(config, entries, { mode: targetMode, totalRows: targetRows });
-    const pages = calculateMarkFoilPages(entries.length, targetMode, targetRows);
-    setStatusMessage({
-      text: `Downloaded ${pages}-Page Mark Foil Word Document (${targetMode === 'blank' ? 'Blank Template' : config.courseNo}).doc`,
-      type: 'success',
-    });
-    setTimeout(() => setStatusMessage(null), 3500);
-  };
-
-  // 3. Print / Save as PDF with multi-page support
+  // 2. Print / Save as PDF with multi-page support
   const handlePrintPDF = (modeOverride?: 'twin' | 'continuous' | 'blank') => {
     const targetMode = modeOverride || foilMode;
     const targetRows = config.totalRows || 25;
@@ -416,7 +378,7 @@ export const MarkFoilGenerator: React.FC<MarkFoilGeneratorProps> = ({
             </span>
           </div>
           <p className="text-xs text-slate-500 mt-1">
-            Exact dual-slip format matching examination valuation foil &bull; {totalPages > 1 ? `Accommodates all ${entries.length} candidates across ${totalPages} pages` : 'Fits on a single page'} &bull; Instant <strong>PDF (.pdf)</strong> &amp; <strong>Word (.doc)</strong> downloads &bull; Digit-by-digit marks in words
+            Exact dual-slip format matching examination valuation foil &bull; {totalPages > 1 ? `Accommodates all ${entries.length} candidates across ${totalPages} pages` : 'Fits on a single page'} &bull; Instant <strong>PDF (.pdf)</strong> downloads &bull; Digit-by-digit marks in words
           </p>
         </div>
 
@@ -434,15 +396,6 @@ export const MarkFoilGenerator: React.FC<MarkFoilGeneratorProps> = ({
             <span>{previewMode ? 'Return to Mark Entry' : 'Foil Preview'}</span>
           </button>
 
-          <button
-            onClick={handleSaveDraft}
-            className="px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer"
-            title="Save draft marks in browser cache"
-          >
-            <Save className="w-3.5 h-3.5 text-slate-600" />
-            <span>Save Draft</span>
-          </button>
-
           {/* Download PDF Button */}
           <button
             onClick={() => handleDownloadPDF()}
@@ -451,16 +404,6 @@ export const MarkFoilGenerator: React.FC<MarkFoilGeneratorProps> = ({
           >
             <Download className="w-3.5 h-3.5" />
             <span>Download PDF{totalPages > 1 ? ` (${totalPages} Pages)` : ' (.pdf)'}</span>
-          </button>
-
-          {/* Download Word (.doc) Button */}
-          <button
-            onClick={() => handleDownloadWordDoc()}
-            className="px-3.5 py-1.5 rounded-lg bg-blue-700 hover:bg-blue-600 text-white text-xs font-bold flex items-center gap-1.5 transition cursor-pointer shadow-xs"
-            title="Download formatted Microsoft Word document (.doc)"
-          >
-            <FileText className="w-3.5 h-3.5" />
-            <span>Download Word{totalPages > 1 ? ` (${totalPages} Pages)` : ' (.doc)'}</span>
           </button>
 
           {/* Print / Save PDF Button */}
@@ -509,14 +452,6 @@ export const MarkFoilGenerator: React.FC<MarkFoilGeneratorProps> = ({
             >
               <Download className="w-3 h-3" />
               <span>Blank (PDF)</span>
-            </button>
-            <button
-              onClick={() => handleDownloadWordDoc('blank')}
-              className="px-2.5 py-1 bg-white hover:bg-slate-100 border border-blue-300 text-blue-700 font-bold rounded text-[11px] flex items-center gap-1 cursor-pointer"
-              title="Download empty blank Word sheet with dotted lines as in photo"
-            >
-              <Download className="w-3 h-3" />
-              <span>Blank (Word)</span>
             </button>
           </div>
         </div>
@@ -593,167 +528,109 @@ export const MarkFoilGenerator: React.FC<MarkFoilGeneratorProps> = ({
           </div>
         </div>
 
-        {/* Quick Segmented Toggle for College vs University Roll No */}
-        <div className="flex flex-wrap items-center justify-between gap-3 bg-amber-50/70 border border-amber-200/80 rounded-xl p-2.5">
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="text-[11px] font-bold text-slate-700 uppercase tracking-wider">
-              Choose Roll Number:
-            </span>
-            <div className="inline-flex rounded-lg border border-slate-300 bg-white p-0.5 shadow-xs">
-              <button
-                type="button"
-                onClick={() => handleRollNumberTypeChange('college')}
-                className={`px-3 py-1.5 rounded-md text-xs font-bold transition cursor-pointer flex items-center gap-1 ${
-                  rollNumberType === 'college'
-                    ? 'bg-[#0c2340] text-amber-300 shadow-xs'
-                    : 'text-slate-700 hover:text-slate-900 hover:bg-slate-50'
-                }`}
-              >
-                <span>College Roll No</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => handleRollNumberTypeChange('university')}
-                className={`px-3 py-1.5 rounded-md text-xs font-bold transition cursor-pointer flex items-center gap-1 ${
-                  rollNumberType === 'university'
-                    ? 'bg-[#0c2340] text-amber-300 shadow-xs'
-                    : 'text-slate-700 hover:text-slate-900 hover:bg-slate-50'
-                }`}
-              >
-                <span>University Roll No</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => handleRollNumberTypeChange('both')}
-                className={`px-3 py-1.5 rounded-md text-xs font-bold transition cursor-pointer flex items-center gap-1 ${
-                  rollNumberType === 'both'
-                    ? 'bg-[#0c2340] text-amber-300 shadow-xs'
-                    : 'text-slate-700 hover:text-slate-900 hover:bg-slate-50'
-                }`}
-              >
-                <span>Both (College / Univ)</span>
-              </button>
-            </div>
-          </div>
-
-          <div className="text-[11px] text-slate-600 font-medium flex flex-wrap items-center gap-2">
-            <div>
-              Active: <span className="font-bold text-[#0c2340]">{rollNumberType === 'college' ? 'College Roll No' : rollNumberType === 'university' ? 'University Roll No' : 'College & University Roll No'}</span>
-              {enrolledStudents.length > 0 && (
-                <span className="text-slate-500 ml-1.5">
-                  ({enrolledStudents.length} candidate{enrolledStudents.length !== 1 ? 's' : ''} in cohort)
-                </span>
-              )}
-            </div>
-            <span className="text-[10.5px] bg-rose-50 text-rose-700 border border-rose-200 px-2 py-0.5 rounded font-semibold" title="Students with status 'Dropped Out' are automatically excluded from examination mark foils">
-              Dropped Out candidates excluded
-            </span>
-          </div>
-        </div>
-
-        {/* Examination & Paper Foil Headers */}
-        <div className="pt-3 border-t border-slate-200">
-          <div className="flex items-center gap-2 mb-3">
-            <Layers className="w-4 h-4 text-blue-600" />
+        {/* Mark Foil Printed Fields (Text Inputs for Admin) */}
+        <div className="pt-3 border-t border-slate-200 space-y-3">
+          <div className="flex items-center gap-2">
+            <FileCode className="w-4 h-4 text-amber-600" />
             <h4 className="text-xs font-bold uppercase tracking-wider text-slate-700">
-              2. Foil Heading &amp; Examination Fields (Printed on Slip)
+              Mark Foil Header Fields (Printed on Slip)
             </h4>
           </div>
 
-          <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-3 text-xs">
-            <div className="col-span-2">
-              <label className="block text-[10px] font-bold text-slate-500 uppercase">
-                EXAMINATION
-              </label>
-              <input
-                type="text"
-                value={config.examinationName}
-                onChange={(e) => setConfig({ ...config, examinationName: e.target.value })}
-                placeholder="e.g. PG 2nd semester Private 2024"
-                className="w-full px-2.5 py-1.5 bg-white border border-slate-300 rounded text-xs font-medium"
-              />
-            </div>
-
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 text-xs">
             <div>
-              <label className="block text-[10px] font-bold text-slate-500 uppercase">
-                Subject
-              </label>
-              <input
-                type="text"
-                value={config.subject}
-                onChange={(e) => setConfig({ ...config, subject: e.target.value })}
-                placeholder="Mathematics"
-                className="w-full px-2.5 py-1.5 bg-white border border-slate-300 rounded text-xs font-medium"
-              />
-            </div>
-
-            <div>
-              <label className="block text-[10px] font-bold text-slate-500 uppercase">
-                Paper
-              </label>
-              <input
-                type="text"
-                value={config.paperName}
-                onChange={(e) => setConfig({ ...config, paperName: e.target.value })}
-                placeholder="Paper Name"
-                className="w-full px-2.5 py-1.5 bg-white border border-slate-300 rounded text-xs font-medium"
-              />
-            </div>
-
-            <div>
-              <label className="block text-[10px] font-bold text-slate-500 uppercase">
-                Full Marks
-              </label>
-              <input
-                type="text"
-                value={config.fullMarks}
-                onChange={(e) => setConfig({ ...config, fullMarks: e.target.value })}
-                placeholder="Full Marks"
-                className="w-full px-2.5 py-1.5 bg-white border border-slate-300 rounded text-xs font-medium"
-              />
-            </div>
-
-            <div>
-              <label className="block text-[10px] font-bold text-slate-500 uppercase">
-                Course No.
-              </label>
-              <input
-                type="text"
-                value={config.courseNo}
-                onChange={(e) => setConfig({ ...config, courseNo: e.target.value })}
-                placeholder="Course No."
-                className="w-full px-2.5 py-1.5 bg-white border border-slate-300 rounded text-xs font-bold text-[#0c2340]"
-              />
-            </div>
-
-            <div>
-              <label className="block text-[10px] font-bold text-slate-500 uppercase">
+              <label className="block text-[10px] font-bold text-slate-600 uppercase tracking-wider mb-1">
                 Set / Year
               </label>
               <input
                 type="text"
                 value={config.setNumber}
                 onChange={(e) => setConfig({ ...config, setNumber: e.target.value })}
-                placeholder="Set / Year"
-                className="w-full px-2.5 py-1.5 bg-white border border-slate-300 rounded text-xs font-medium"
+                placeholder="e.g. Set 1 / 2026"
+                className="w-full px-3 py-1.5 bg-white border border-slate-300 rounded-lg text-xs font-medium text-slate-900 focus:outline-hidden focus:border-amber-500"
+              />
+            </div>
+
+            <div className="sm:col-span-2">
+              <label className="block text-[10px] font-bold text-slate-600 uppercase tracking-wider mb-1">
+                EXAMINATION:
+              </label>
+              <input
+                type="text"
+                value={config.examinationName}
+                onChange={(e) => setConfig({ ...config, examinationName: e.target.value })}
+                placeholder="e.g. PG 2nd Semester Examination 2026"
+                className="w-full px-3 py-1.5 bg-white border border-slate-300 rounded-lg text-xs font-medium text-slate-900 focus:outline-hidden focus:border-amber-500"
               />
             </div>
 
             <div>
-              <label className="block text-[10px] font-bold text-slate-500 uppercase">
+              <label className="block text-[10px] font-bold text-slate-600 uppercase tracking-wider mb-1">
+                Subject:
+              </label>
+              <input
+                type="text"
+                value={config.subject}
+                onChange={(e) => setConfig({ ...config, subject: e.target.value })}
+                placeholder="e.g. Mathematics"
+                className="w-full px-3 py-1.5 bg-white border border-slate-300 rounded-lg text-xs font-medium text-slate-900 focus:outline-hidden focus:border-amber-500"
+              />
+            </div>
+
+            <div>
+              <label className="block text-[10px] font-bold text-slate-600 uppercase tracking-wider mb-1">
+                Paper:
+              </label>
+              <input
+                type="text"
+                value={config.paperName}
+                onChange={(e) => setConfig({ ...config, paperName: e.target.value })}
+                placeholder="e.g. Paper I"
+                className="w-full px-3 py-1.5 bg-white border border-slate-300 rounded-lg text-xs font-medium text-slate-900 focus:outline-hidden focus:border-amber-500"
+              />
+            </div>
+
+            <div>
+              <label className="block text-[10px] font-bold text-slate-600 uppercase tracking-wider mb-1">
+                Full Marks:
+              </label>
+              <input
+                type="text"
+                value={config.fullMarks}
+                onChange={(e) => setConfig({ ...config, fullMarks: e.target.value })}
+                placeholder="e.g. 100"
+                className="w-full px-3 py-1.5 bg-white border border-slate-300 rounded-lg text-xs font-medium text-slate-900 focus:outline-hidden focus:border-amber-500"
+              />
+            </div>
+
+            <div>
+              <label className="block text-[10px] font-bold text-slate-600 uppercase tracking-wider mb-1">
+                Course No:
+              </label>
+              <input
+                type="text"
+                value={config.courseNo}
+                onChange={(e) => setConfig({ ...config, courseNo: e.target.value })}
+                placeholder="e.g. MATH-501"
+                className="w-full px-3 py-1.5 bg-white border border-slate-300 rounded-lg text-xs font-bold text-[#0c2340] focus:outline-hidden focus:border-amber-500"
+              />
+            </div>
+
+            <div>
+              <label className="block text-[10px] font-bold text-slate-600 uppercase tracking-wider mb-1">
                 Examiner Name
               </label>
               <input
                 type="text"
                 value={config.examinerName}
                 onChange={(e) => setConfig({ ...config, examinerName: e.target.value })}
-                placeholder="Examiner Name"
-                className="w-full px-2.5 py-1.5 bg-white border border-slate-300 rounded text-xs font-medium"
+                placeholder="e.g. Dr. A. K. Sharma"
+                className="w-full px-3 py-1.5 bg-white border border-slate-300 rounded-lg text-xs font-medium text-slate-900 focus:outline-hidden focus:border-amber-500"
               />
             </div>
 
             <div>
-              <label className="block text-[10px] font-bold text-slate-500 uppercase">
+              <label className="block text-[10px] font-bold text-slate-600 uppercase tracking-wider mb-1">
                 Date
               </label>
               <input
@@ -761,105 +638,8 @@ export const MarkFoilGenerator: React.FC<MarkFoilGeneratorProps> = ({
                 value={config.date}
                 onChange={(e) => setConfig({ ...config, date: e.target.value })}
                 placeholder="DD/MM/YYYY"
-                className="w-full px-2.5 py-1.5 bg-white border border-slate-300 rounded text-xs font-medium"
+                className="w-full px-3 py-1.5 bg-white border border-slate-300 rounded-lg text-xs font-medium text-slate-900 focus:outline-hidden focus:border-amber-500"
               />
-            </div>
-
-            {/* Slip Fill Mode */}
-            <div>
-              <label className="block text-[10px] font-bold text-slate-500 uppercase">
-                Dual Slips Mode
-              </label>
-              <select
-                value={foilMode}
-                onChange={(e) => setFoilMode(e.target.value as any)}
-                className="w-full px-2 py-1.5 bg-white border border-slate-300 rounded text-xs font-medium"
-              >
-                <option value="twin">Twin Slips (Left &amp; Right Identical)</option>
-                <option value="continuous">Continuous (1–25 Left, 26–50 Right)</option>
-                <option value="blank">Blank Format (As in Photo)</option>
-              </select>
-            </div>
-
-            {/* Rows per slip (single page fit) */}
-            <div>
-              <label className="block text-[10px] font-bold text-slate-500 uppercase">
-                Rows Per Sheet
-              </label>
-              <select
-                value={config.totalRows || 25}
-                onChange={(e) => setConfig({ ...config, totalRows: parseInt(e.target.value) || 25 })}
-                className="w-full px-2 py-1.5 bg-white border border-slate-300 rounded text-xs font-semibold text-emerald-800"
-              >
-                <option value={25}>25 Rows Per Sheet (Exact Photo Format)</option>
-                <option value={28}>28 Rows Per Sheet (Compact)</option>
-                <option value={20}>20 Rows Per Sheet (Spacious)</option>
-                <option value={30}>30 Rows Per Sheet (Dense)</option>
-              </select>
-            </div>
-
-            {/* Cell Height Setting (fitting strictly to 1 page) */}
-            <div>
-              <label className="block text-[10px] font-bold text-slate-500 uppercase">
-                Cell Height (1 Page)
-              </label>
-              <select
-                value={config.cellHeightPreset || 'generous'}
-                onChange={(e) => setConfig({ ...config, cellHeightPreset: e.target.value as any })}
-                className="w-full px-2 py-1.5 bg-white border border-slate-300 rounded text-xs font-semibold text-indigo-900"
-              >
-                <option value="generous">Generous (~9mm, Default)</option>
-                <option value="extra">Extra Tall (~9.3mm, Max Page 1)</option>
-                <option value="standard">Standard (~8.2mm)</option>
-              </select>
-            </div>
-
-            {/* Font Size Setting */}
-            <div>
-              <label className="block text-[10px] font-bold text-slate-500 uppercase">
-                Font Size
-              </label>
-              <select
-                value={config.fontSizePreset || 'large'}
-                onChange={(e) => setConfig({ ...config, fontSizePreset: e.target.value as any })}
-                className="w-full px-2 py-1.5 bg-white border border-slate-300 rounded text-xs font-semibold text-amber-900"
-              >
-                <option value="large">Large (11–13pt, Default)</option>
-                <option value="extralarge">Extra Large (12–14pt)</option>
-                <option value="standard">Standard (10–12pt)</option>
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-[10px] font-bold text-slate-500 uppercase">
-                Words Format
-              </label>
-              <div className="flex items-center gap-1 mt-0.5">
-                <button
-                  type="button"
-                  onClick={() => handleToggleCasing('upper')}
-                  className={`px-2 py-1 rounded text-[10px] font-bold cursor-pointer ${
-                    config.wordCasing === 'upper'
-                      ? 'bg-amber-500 text-slate-950'
-                      : 'bg-white border text-slate-600'
-                  }`}
-                  title="SIX FOUR (Official uppercase standard)"
-                >
-                  UPPER
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleToggleCasing('lower')}
-                  className={`px-2 py-1 rounded text-[10px] font-bold cursor-pointer ${
-                    config.wordCasing === 'lower'
-                      ? 'bg-amber-500 text-slate-950'
-                      : 'bg-white border text-slate-600'
-                  }`}
-                  title="six four"
-                >
-                  lower
-                </button>
-              </div>
             </div>
           </div>
         </div>
@@ -939,14 +719,6 @@ export const MarkFoilGenerator: React.FC<MarkFoilGeneratorProps> = ({
               </button>
             </div>
           )}
-
-          {/* Confidential Notice Note */}
-          <div className="p-3 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-xs flex items-start gap-2">
-            <HelpCircle className="w-4 h-4 text-amber-700 shrink-0 mt-0.5" />
-            <div className="leading-relaxed">
-              <strong>University Secrecy Regulation Compliance:</strong> Candidate names are shown on this entry screen to assist the examiner. The downloaded <strong>PDF (.pdf)</strong> and <strong>Word (.doc)</strong> files match the official format and contain strictly <strong>Roll / Code Number, Marks Obtained (In figures, In Words)</strong>.
-            </div>
-          </div>
 
           {/* The Interactive Marks Entry Table with Sheet/Page Dividers */}
           <div className="overflow-x-auto border border-slate-200 rounded-xl">
@@ -1090,14 +862,6 @@ export const MarkFoilGenerator: React.FC<MarkFoilGeneratorProps> = ({
               </button>
 
               <button
-                onClick={() => handleDownloadWordDoc()}
-                className="px-4 py-2 bg-blue-700 hover:bg-blue-600 text-white rounded-xl text-xs font-extrabold flex items-center gap-1.5 transition shadow-sm cursor-pointer"
-              >
-                <FileText className="w-4 h-4" />
-                <span>Download Word{totalPages > 1 ? ` (${totalPages} Pages)` : ' (.doc)'}</span>
-              </button>
-
-              <button
                 onClick={() => handlePrintPDF()}
                 className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-amber-400 rounded-xl text-xs font-bold flex items-center gap-1.5 transition shadow-sm cursor-pointer"
               >
@@ -1217,14 +981,6 @@ export const MarkFoilGenerator: React.FC<MarkFoilGeneratorProps> = ({
               </button>
 
               <button
-                onClick={() => handleDownloadWordDoc()}
-                className="px-3.5 py-1.5 bg-blue-700 hover:bg-blue-600 text-white text-xs font-bold rounded-lg flex items-center gap-1.5 shadow-xs transition cursor-pointer"
-              >
-                <FileText className="w-3.5 h-3.5" />
-                <span>Word{totalPages > 1 ? ` (${totalPages}p)` : ''}</span>
-              </button>
-
-              <button
                 onClick={() => handlePrintPDF()}
                 className="px-3.5 py-1.5 bg-slate-900 hover:bg-slate-800 text-amber-400 text-xs font-bold rounded-lg flex items-center gap-1.5 shadow-xs transition cursor-pointer"
               >
@@ -1247,31 +1003,30 @@ export const MarkFoilGenerator: React.FC<MarkFoilGeneratorProps> = ({
               const startCandidateIdx = pageIdx * rowsPerPage;
               const endCandidateIdx = Math.min(entries.length, startCandidateIdx + rowsPerPage);
 
-              const pageIndicator = totalPages > 1 ? ` (Page ${pageIdx + 1} of ${totalPages})` : '';
               const setYearText =
                 config.setNumber && config.date
-                  ? `Set / Year ${config.setNumber} / ${config.date.slice(-4) || '2026'}${pageIndicator}`
-                  : `Set / Year..................${pageIndicator}`;
+                  ? `Set / Year ${config.setNumber} / ${config.date.slice(-4) || '2026'}`
+                  : 'Set / Year..................';
 
               const examText = config.examinationName
-                ? `EXAMINATION  ${config.examinationName}`
-                : 'EXAMINATION ..............................................';
+                ? `EXAMINATION:  ${config.examinationName}`
+                : 'EXAMINATION: ..............................................';
 
               const subjectText = config.subject
-                ? `Subject  ${config.subject}`
-                : 'Subject ....................................................';
+                ? `Subject:  ${config.subject}`
+                : 'Subject: ....................................................';
 
               const paperVal = config.paperName || '.............................';
               const marksVal = config.fullMarks || '...............';
-              const paperMarksText = `Paper  ${paperVal}    Full Marks  ${marksVal}`;
+              const paperMarksText = `Paper:  ${paperVal}    Full Marks:  ${marksVal}`;
 
               const courseNoText = config.courseNo
-                ? `Course No.  ${config.courseNo}`
-                : 'Course No. .................................................';
+                ? `Course No:  ${config.courseNo}`
+                : 'Course No: .................................................';
 
               const dateStr = config.date
-                ? `Date  ${config.date}`
-                : 'Date .................................';
+                ? `Date:  ${formatDateToDDMMYYYY(config.date)}`
+                : 'Date: .................................';
 
               return (
                 <div key={pageIdx} className="space-y-2">
@@ -1356,20 +1111,40 @@ export const MarkFoilGenerator: React.FC<MarkFoilGeneratorProps> = ({
 
                           return (
                             <div key={colIdx} className={`space-y-1.5 ${fontMetaSize} leading-snug`}>
+                              {/* Page Number at Top Left Corner above College Title */}
+                              {totalPages > 1 && (
+                                <div className="text-left font-medium text-[11px] text-slate-800 -mb-1">
+                                  Page {pageIdx + 1} of {totalPages}
+                                </div>
+                              )}
+
                               {/* College Header in Bold Capital */}
                               <div className="text-center font-bold text-xs sm:text-[13px] uppercase tracking-wider font-serif text-black">
                                 PANCHAYAT COLLEGE, BARAGADA
                               </div>
 
-                              {/* Header matching print and PDF exactly */}
+                              {/* Set / Year Header */}
                               <div className="text-right font-medium mb-1">
-                                {setYearText}
+                                Set / Year {config.setNumber ? <span className="font-bold text-black">{config.setNumber}</span> : '..................'}
                               </div>
-                              <div>{examText}</div>
-                              <div>{subjectText}</div>
-                              <div>{paperMarksText}</div>
                               <div>
-                                <strong>Course No.</strong> {config.courseNo ? `  ${config.courseNo}` : ' .................................................'}
+                                EXAMINATION: {config.examinationName ? <span className="font-bold text-black">{config.examinationName}</span> : '..............................................'}
+                              </div>
+                              <div>
+                                Subject: {config.subject ? <span className="font-bold text-black">{config.subject}</span> : '....................................................'}
+                              </div>
+                              <div className="flex items-start justify-between gap-2">
+                                <div className="min-w-0 pr-1 leading-snug">
+                                  <span>Paper: </span>
+                                  {config.paperName ? <span className="font-bold text-black break-words">{config.paperName}</span> : '.............................'}
+                                </div>
+                                <div className="shrink-0 text-right whitespace-nowrap">
+                                  <span>Full Marks: </span>
+                                  {config.fullMarks ? <span className="font-bold text-black">{config.fullMarks}</span> : '...............'}
+                                </div>
+                              </div>
+                              <div>
+                                <span>Course No: </span>{config.courseNo ? <span className="font-bold text-black">{config.courseNo}</span> : '.................................................'}
                               </div>
 
                               {/* Solid Underline */}
@@ -1422,11 +1197,11 @@ export const MarkFoilGenerator: React.FC<MarkFoilGeneratorProps> = ({
                               </table>
 
                               {/* Footer matching print and PDF */}
-                              <div className={`pt-2.5 ${fontFooterSize} space-y-0.5`}>
+                              <div className={`pt-10 mt-2 ${fontFooterSize} space-y-0.5`}>
                                 <div className="font-normal">Signature of the Examiner</div>
-                                <div>{dateStr}</div>
+                                <div>Date: {config.date ? <span className="font-bold text-black">{formatDateToDDMMYYYY(config.date)}</span> : '................................'}</div>
                                 {config.examinerName && (
-                                  <div className="text-[11px] sm:text-xs text-slate-600">({config.examinerName})</div>
+                                  <div className="text-[11px] sm:text-xs font-bold text-black">({config.examinerName})</div>
                                 )}
                               </div>
                             </div>

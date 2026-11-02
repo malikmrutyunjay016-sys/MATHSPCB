@@ -32,21 +32,21 @@ export const GatewaySection: React.FC<GatewaySectionProps> = ({
         'The rigorous foundation in Real Analysis and Abstract Algebra helped me crack IIT-JAM with an All India Rank. The faculty support here is unparalleled.',
       author: 'Subham Pradhan',
       badge: 'Alumnus (Batch 2024) • Now at IIT Bombay',
-      date: '2026.04.12',
+      date: '12/04/2026',
     },
     {
       quote:
         'Our smart classroom and computing lab with MATLAB gave us hands-on experience in numerical modeling. Panchayat College Mathematics Dept is truly premier.',
       author: 'Priyanka Sahoo',
       badge: 'B.Sc Honours Final Year Student',
-      date: '2026.09.18',
+      date: '18/09/2026',
     },
     {
       quote:
         'The Departmental Reference Library with over 1,200 specialized books and regular seminar presentations shaped my passion for higher research.',
       author: 'Abhilash Hota',
       badge: 'Research Scholar, Sambalpur University',
-      date: '2026.07.05',
+      date: '05/07/2026',
     },
   ];
 

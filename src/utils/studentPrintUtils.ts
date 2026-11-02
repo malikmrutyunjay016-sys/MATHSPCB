@@ -1,4 +1,5 @@
 import { Student } from '../types';
+import { formatDateToDDMMYYYY } from './dateFormatter';
 
 export interface StudentPrintFilters {
   batch?: string;
@@ -17,11 +18,7 @@ export function generateStudentDirectoryHtml(
   filters: StudentPrintFilters,
   isAdmin: boolean = false
 ): string {
-  const generatedDate = new Date().toLocaleDateString('en-IN', {
-    day: '2-digit',
-    month: 'short',
-    year: 'numeric',
-  });
+  const generatedDate = formatDateToDDMMYYYY(new Date());
   const generatedTime = new Date().toLocaleTimeString('en-IN', {
     hour: '2-digit',
     minute: '2-digit',

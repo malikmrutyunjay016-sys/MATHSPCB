@@ -2,6 +2,7 @@
 // Guaranteed single-page A4 output matching the official dual-column University Mark Foil format
 // Calibrated with increased cell height and enlarged font sizes for optimal legibility & secrecy compliance
 import { jsPDF } from 'jspdf';
+import { formatDateToDDMMYYYY } from './dateFormatter';
 
 export interface MarkFoilStudentEntry {
   id: string;
@@ -200,13 +201,6 @@ export function generateMarkFoilPDF(
   const rowHeight = Math.min(10.5, Math.max(7.0, (baseAvailableH - (th1Height + th2Height)) / totalRows));
   const totalTableH = th1Height + th2Height + totalRows * rowHeight;
 
-  // Calculate total vertical height of printing area for vertical centering on A4 (297mm)
-  // Header: 32mm (including College Name), Table: totalTableH, Footer: 13.5mm (or 17.5mm with examiner name)
-  const headerHeight = 32.0;
-  const footerHeight = config.examinerName ? 17.5 : 13.5;
-  const totalContentH = headerHeight + totalTableH + footerHeight;
-  const startY = Math.max(6, Math.round(((297 - totalContentH) / 2) * 10) / 10);
-
   // Typography sizes in pt matching official university format and on-screen preview
   const fontMeta = fontSizePreset === 'extralarge' ? 12 : fontSizePreset === 'standard' ? 10 : 11;
   const fontTh1 = fontSizePreset === 'extralarge' ? 11 : fontSizePreset === 'standard' ? 9.5 : 10.5;
@@ -215,6 +209,76 @@ export function generateMarkFoilPDF(
   const fontFigures = fontSizePreset === 'extralarge' ? 14 : fontSizePreset === 'standard' ? 12 : 13;
   const fontWords = fontSizePreset === 'extralarge' ? 11 : fontSizePreset === 'standard' ? 9.5 : 10.5;
   const fontFooter = fontSizePreset === 'extralarge' ? 12 : fontSizePreset === 'standard' ? 10 : 11;
+
+  // Calculate Paper text wrapping lines to avoid overlapping with Full Marks on Line 1
+  doc.setFontSize(fontMeta);
+  doc.setFont('times', 'normal');
+  const paperLabelW = doc.getTextWidth('Paper:  ');
+  const fullMarksLabelW = doc.getTextWidth('Full Marks:  ');
+  const marksValStr = config.fullMarks || '...............';
+  doc.setFont('times', config.fullMarks ? 'bold' : 'normal');
+  const fullMarksValW = doc.getTextWidth(marksValStr);
+  const fullMarksBlockW = fullMarksLabelW + fullMarksValW;
+
+  // Max width available for Paper text on line 1 before reaching Full Marks (with 3.5mm safe gap)
+  const maxPaperLine1W = Math.max(20, (colWidth - 1 - fullMarksBlockW - 3.5) - paperLabelW);
+  const maxContinuationW = Math.max(30, colWidth - 1 - paperLabelW);
+
+  const rawPaperName = (config.paperName || '').trim();
+  let paperLines: string[] = [];
+
+  if (!rawPaperName) {
+    paperLines = ['.............................'];
+  } else {
+    doc.setFont('times', 'bold');
+    if (doc.getTextWidth(rawPaperName) <= maxPaperLine1W) {
+      paperLines = [rawPaperName];
+    } else {
+      // Put as many words as fit on Line 1, take extra part to next line(s)
+      const words = rawPaperName.split(/\s+/);
+      let line1 = '';
+      let wordIdx = 0;
+
+      for (let i = 0; i < words.length; i++) {
+        const candidate = line1 ? `${line1} ${words[i]}` : words[i];
+        if (doc.getTextWidth(candidate) <= maxPaperLine1W) {
+          line1 = candidate;
+          wordIdx = i + 1;
+        } else {
+          break;
+        }
+      }
+
+      if (line1) {
+        const rest = words.slice(wordIdx).join(' ');
+        if (rest) {
+          const restLines = doc.splitTextToSize(rest, maxContinuationW) as string[];
+          paperLines = [line1, ...restLines];
+        } else {
+          paperLines = [line1];
+        }
+      } else {
+        // If even the first word exceeds line 1 space, split cleanly to size
+        const firstLineSplits = doc.splitTextToSize(rawPaperName, maxPaperLine1W) as string[];
+        const firstChunk = firstLineSplits[0];
+        const rest = rawPaperName.slice(firstChunk.length).trim();
+        if (rest) {
+          const restLines = doc.splitTextToSize(rest, maxContinuationW) as string[];
+          paperLines = [firstChunk, ...restLines];
+        } else {
+          paperLines = [firstChunk];
+        }
+      }
+    }
+  }
+
+  const extraPaperLines = Math.max(0, paperLines.length - 1);
+  const paperLineStep = 4.5;
+  const extraHeaderHeight = extraPaperLines * paperLineStep;
+  const headerHeight = 32.0 + extraHeaderHeight;
+  const footerHeight = config.examinerName ? 17.5 : 13.5;
+  const totalContentH = headerHeight + totalTableH + footerHeight;
+  const startY = Math.max(6, Math.round(((297 - totalContentH) / 2) * 10) / 10);
 
   // Precise column widths totaling 92mm: Roll (38%) = 35mm, Figures (22%) = 20mm, Words (40%) = 37mm
   const colRollW = 35;
@@ -248,55 +312,87 @@ export function generateMarkFoilPDF(
     columns.forEach(({ x, index }) => {
       const colEntries = getEntriesForColumn(pageIdx, index);
 
-      // 0. College Header in Bold Capital at top of both halves
+      // 0. Page Number at Top Left Corner above College Header
+      const pageStr = totalPages > 1 ? `Page ${pageIdx + 1} of ${totalPages}` : '';
+      if (pageStr) {
+        doc.setFont('times', 'normal');
+        doc.setFontSize(fontMeta - 0.5);
+        doc.text(pageStr, x, startY);
+      }
+
+      // College Header in Bold Capital at top of both halves
       doc.setFont('times', 'bold');
       doc.setFontSize(fontMeta + 1.5);
       doc.text('PANCHAYAT COLLEGE, BARAGADA', x + colWidth / 2, startY + 3.2, { align: 'center' });
 
       // 1. Header Metadata Section
-      doc.setFont('times', 'normal');
       doc.setFontSize(fontMeta);
 
-      // Set / Year with multi-page indicator if more than 1 page
-      const pageIndicator = totalPages > 1 ? ` (Page ${pageIdx + 1} of ${totalPages})` : '';
-      const setYearText =
-        config.setNumber && config.date
-          ? `Set / Year ${config.setNumber} / ${config.date.slice(-4) || '2026'}${pageIndicator}`
-          : `Set / Year..................${pageIndicator}`;
-      doc.text(setYearText, x + colWidth - 1, startY + 7.8, { align: 'right' });
+      // Set / Year
+      doc.setFont('times', 'normal');
+      if (config.setNumber) {
+        const valText = config.setNumber;
+        doc.text('Set / Year ', x + colWidth - 1 - doc.getTextWidth(valText), startY + 7.8, { align: 'right' });
+        doc.setFont('times', 'bold');
+        doc.text(valText, x + colWidth - 1, startY + 7.8, { align: 'right' });
+      } else {
+        doc.text('Set / Year..................', x + colWidth - 1, startY + 7.8, { align: 'right' });
+      }
 
       // Examination
-      const examText = config.examinationName
-        ? `EXAMINATION  ${config.examinationName}`
-        : 'EXAMINATION ..............................................';
-      doc.text(examText, x, startY + 12.8);
+      doc.setFont('times', 'normal');
+      doc.text('EXAMINATION:  ', x, startY + 12.8);
+      const examLabelW = doc.getTextWidth('EXAMINATION:  ');
+      doc.setFont('times', config.examinationName ? 'bold' : 'normal');
+      doc.text(config.examinationName || '..............................................', x + examLabelW, startY + 12.8);
 
       // Subject
-      const subjectText = config.subject
-        ? `Subject  ${config.subject}`
-        : 'Subject ....................................................';
-      doc.text(subjectText, x, startY + 17.8);
+      doc.setFont('times', 'normal');
+      doc.text('Subject:  ', x, startY + 17.8);
+      const subjLabelW = doc.getTextWidth('Subject:  ');
+      doc.setFont('times', config.subject ? 'bold' : 'normal');
+      doc.text(config.subject || '....................................................', x + subjLabelW, startY + 17.8);
 
-      // Paper & Full Marks
-      const paperVal = config.paperName || '.............................';
-      const marksVal = config.fullMarks || '...............';
-      const paperFullMarksText = `Paper  ${paperVal}   Full Marks  ${marksVal}`;
-      doc.text(paperFullMarksText, x, startY + 22.8);
+      // Paper (Line 1)
+      const paperBaseY = startY + 22.8;
+      doc.setFont('times', 'normal');
+      doc.text('Paper:  ', x, paperBaseY);
+      doc.setFont('times', config.paperName ? 'bold' : 'normal');
+      doc.text(paperLines[0], x + paperLabelW, paperBaseY);
 
-      // Course No.
-      doc.setFont('times', 'bold');
-      const courseNoText = config.courseNo
-        ? `Course No.  ${config.courseNo}`
-        : 'Course No. .................................................';
-      doc.text(courseNoText, x, startY + 27.8);
+      // Extra part of Paper taken to next line(s) aligned under Paper text
+      for (let pIdx = 1; pIdx < paperLines.length; pIdx++) {
+        const nextLineY = paperBaseY + pIdx * paperLineStep;
+        doc.setFont('times', config.paperName ? 'bold' : 'normal');
+        doc.text(paperLines[pIdx], x + paperLabelW, nextLineY);
+      }
+
+      // Full Marks (on line 1, right-aligned)
+      doc.setFont('times', 'normal');
+      if (config.fullMarks) {
+        doc.text('Full Marks:  ', x + colWidth - 1 - fullMarksValW, paperBaseY, { align: 'right' });
+        doc.setFont('times', 'bold');
+        doc.text(marksValStr, x + colWidth - 1, paperBaseY, { align: 'right' });
+      } else {
+        doc.text(`Full Marks:  ${marksValStr}`, x + colWidth - 1, paperBaseY, { align: 'right' });
+      }
+
+      // Course No (placed below Paper lines)
+      const courseNoY = startY + 27.8 + extraHeaderHeight;
+      doc.setFont('times', 'normal');
+      doc.text('Course No:  ', x, courseNoY);
+      const courseLabelW = doc.getTextWidth('Course No:  ');
+      doc.setFont('times', config.courseNo ? 'bold' : 'normal');
+      doc.text(config.courseNo || '.................................................', x + courseLabelW, courseNoY);
 
       // Solid horizontal line below Course No.
+      const solidLineY = courseNoY + 2.0;
       doc.setDrawColor(0, 0, 0);
       doc.setLineWidth(0.4);
-      doc.line(x, startY + 29.8, x + colWidth, startY + 29.8);
+      doc.line(x, solidLineY, x + colWidth, solidLineY);
 
       // 2. Marks Table
-      const tableY = startY + 32.0;
+      const tableY = startY + headerHeight;
 
       // Outer table rectangle
       doc.setLineWidth(0.35);
@@ -331,10 +427,19 @@ export function generateMarkFoilPDF(
         // Populate student data if present
         const entry = colEntries[r];
         if (entry) {
-          // Roll number
+          // Roll number (auto-scaled so long/dual roll numbers stay strictly on same line)
           doc.setFont('times', 'normal');
-          doc.setFontSize(fontRoll);
-          doc.text(String(entry.rollNumber || ''), x + 2, curY + (rowHeight * 0.67));
+          const rollText = String(entry.rollNumber || '');
+          if (rollText) {
+            doc.setFontSize(fontRoll);
+            const rollWidth = doc.getTextWidth(rollText);
+            const maxRollW = colRollW - 3;
+            if (rollWidth > maxRollW) {
+              const scaledRollSize = Math.max(6.5, fontRoll * (maxRollW / rollWidth));
+              doc.setFontSize(scaledRollSize);
+            }
+            doc.text(rollText, x + 2, curY + (rowHeight * 0.67));
+          }
 
           // In figures
           doc.setFont('times', 'bold');
@@ -358,17 +463,19 @@ export function generateMarkFoilPDF(
       }
 
       // 3. Footer Section below table
-      const footerY = tableY + totalTableH + 5.0;
+      const footerY = tableY + totalTableH + 15.0;
       doc.setFont('times', 'normal');
       doc.setFontSize(fontFooter);
       doc.text('Signature of the Examiner', x, footerY);
 
-      const dateStr = config.date
-        ? `Date  ${config.date}`
-        : 'Date .................................';
-      doc.text(dateStr, x, footerY + 4.5);
+      doc.setFont('times', 'normal');
+      doc.text('Date:  ', x, footerY + 4.5);
+      const dateLabelW = doc.getTextWidth('Date:  ');
+      doc.setFont('times', config.date ? 'bold' : 'normal');
+      doc.text(config.date ? formatDateToDDMMYYYY(config.date) : '................................', x + dateLabelW, footerY + 4.5);
 
       if (config.examinerName) {
+        doc.setFont('times', 'bold');
         doc.setFontSize(Math.max(9, fontFooter - 1.5));
         doc.text(`(${config.examinerName})`, x, footerY + 9.0);
       }
@@ -451,13 +558,15 @@ export function generateMarkFoilWordDocument(
 
     for (let r = 0; r < totalRows; r++) {
       const entry = colEntries[r];
-      const roll = entry ? entry.rollNumber : '&nbsp;';
+      const rollStr = entry ? String(entry.rollNumber || '') : '';
+      const rollFontSize = rollStr.length > 24 ? '8pt' : rollStr.length > 18 ? '9.5pt' : rollStr.length > 14 ? '10.5pt' : fontRoll;
+      const roll = rollStr || '&nbsp;';
       const figures = entry && entry.marksInFigures ? entry.marksInFigures : '&nbsp;';
       const words = entry && entry.marksInWords ? entry.marksInWords : '&nbsp;';
 
       rowsHtml.push(`
         <tr style="height: ${rowPt}pt; mso-height-rule: exactly; page-break-inside: avoid;">
-          <td style="border: 1pt solid #000000; padding: 2.5pt 4pt; font-family: 'Times New Roman', serif; font-size: ${fontRoll}; font-weight: 500; text-align: left; width: 38%; vertical-align: middle; mso-line-height-rule: exactly; line-height: 13pt;">
+          <td style="border: 1pt solid #000000; padding: 2.5pt 4pt; font-family: 'Times New Roman', serif; font-size: ${rollFontSize}; font-weight: 500; text-align: left; width: 38%; vertical-align: middle; white-space: nowrap; mso-line-height-rule: exactly; line-height: 13pt;">
             ${roll}
           </td>
           <td style="border: 1pt solid #000000; padding: 2.5pt 3pt; font-family: 'Times New Roman', serif; font-size: ${fontFigures}; font-weight: bold; text-align: center; width: 22%; vertical-align: middle; mso-line-height-rule: exactly; line-height: 14pt;">
@@ -470,39 +579,39 @@ export function generateMarkFoilWordDocument(
       `);
     }
 
-    const pageIndicator = totalPages > 1 ? ` (Page ${pageIdx + 1} of ${totalPages})` : '';
-    const setYearText =
-      config.setNumber && config.date
-        ? `Set / Year ${config.setNumber} / ${config.date.slice(-4) || '2026'}${pageIndicator}`
-        : `Set / Year..................${pageIndicator}`;
+    const setYearText = config.setNumber
+      ? `Set / Year <b>${config.setNumber}</b>`
+      : 'Set / Year..................';
 
     const examText = config.examinationName
-      ? `EXAMINATION  ${config.examinationName}`
-      : 'EXAMINATION ..............................................';
+      ? `EXAMINATION:  <b>${config.examinationName}</b>`
+      : 'EXAMINATION: ..............................................';
 
     const subjectText = config.subject
-      ? `Subject  ${config.subject}`
-      : 'Subject ....................................................';
+      ? `Subject:  <b>${config.subject}</b>`
+      : 'Subject: ....................................................';
 
-    const paperVal = config.paperName || '.............................';
-    const marksVal = config.fullMarks || '...............';
-    const paperMarksText = `Paper  ${paperVal} &nbsp;&nbsp;&nbsp;&nbsp; Full Marks  ${marksVal}`;
+    const paperVal = config.paperName ? `<b>${config.paperName}</b>` : '.............................';
+    const marksVal = config.fullMarks ? `<b>${config.fullMarks}</b>` : '...............';
 
     const courseNoText = config.courseNo
-      ? `<strong>Course No.  ${config.courseNo}</strong>`
-      : 'Course No. .................................................';
+      ? `Course No:  <b>${config.courseNo}</b>`
+      : 'Course No: .................................................';
 
     const dateStr = config.date
-      ? `Date  ${config.date}`
-      : 'Date .................................';
+      ? `Date:  <b>${formatDateToDDMMYYYY(config.date)}</b>`
+      : 'Date: .................................';
 
     return `
       <div style="font-family: 'Times New Roman', Times, serif; color: #000000; margin: 0; padding: 0;">
+        <!-- Page Number at Top Left Corner above College Header -->
+        ${totalPages > 1 ? `<div style="text-align: left; font-size: ${fontMeta}; margin-bottom: 1pt;">Page ${pageIdx + 1} of ${totalPages}</div>` : ''}
+
         <!-- College Header in Bold Capital -->
         <div style="text-align: center; font-size: ${fontMeta}; font-weight: bold; text-transform: uppercase; margin-bottom: 3pt; letter-spacing: 0.5px; mso-line-height-rule: exactly; line-height: ${fontLineHeight};">
           PANCHAYAT COLLEGE, BARAGADA
         </div>
-        <!-- Header -->
+        <!-- Set / Year Header -->
         <div style="text-align: right; font-size: ${fontMeta}; margin-bottom: 2pt; mso-line-height-rule: exactly; line-height: ${fontLineHeight};">
           ${setYearText}
         </div>
@@ -512,8 +621,9 @@ export function generateMarkFoilWordDocument(
         <div style="font-size: ${fontMeta}; margin-bottom: 2pt; mso-line-height-rule: exactly; line-height: ${fontLineHeight};">
           ${subjectText}
         </div>
-        <div style="font-size: ${fontMeta}; margin-bottom: 2pt; mso-line-height-rule: exactly; line-height: ${fontLineHeight};">
-          ${paperMarksText}
+        <div style="font-size: ${fontMeta}; margin-bottom: 2pt; mso-line-height-rule: exactly; line-height: ${fontLineHeight}; display: flex; align-items: flex-start; justify-content: space-between; width: 100%;">
+          <div style="min-width: 0; padding-right: 6px; word-break: break-word;">Paper:  ${paperVal}</div>
+          <div style="flex-shrink: 0; white-space: nowrap; text-align: right;">Full Marks:  ${marksVal}</div>
         </div>
         <div style="font-size: ${fontMeta}; margin-bottom: 3pt; mso-line-height-rule: exactly; line-height: ${fontLineHeight};">
           ${courseNoText}
@@ -548,7 +658,7 @@ export function generateMarkFoilWordDocument(
         </table>
 
         <!-- Footer -->
-        <div style="font-size: ${fontFooter}; margin-top: 4pt; mso-line-height-rule: exactly; line-height: 15pt;">
+        <div style="font-size: ${fontFooter}; margin-top: 28pt; mso-line-height-rule: exactly; line-height: 15pt;">
           <div>Signature of the Examiner</div>
           <div>${dateStr}</div>
           ${config.examinerName ? `<div style="font-size: 10pt; color: #444;">(${config.examinerName})</div>` : ''}
@@ -710,54 +820,59 @@ export function printMarkFoil(
 
     for (let r = 0; r < totalRows; r++) {
       const entry = colEntries[r];
-      const roll = entry ? entry.rollNumber : '';
+      const rollStr = entry ? String(entry.rollNumber || '') : '';
+      const rollStyle = rollStr.length > 24 ? 'font-size: 8pt;' : rollStr.length > 18 ? 'font-size: 9.5pt;' : rollStr.length > 14 ? 'font-size: 10.5pt;' : '';
       const figures = entry && entry.marksInFigures ? entry.marksInFigures : '';
       const words = entry && entry.marksInWords ? entry.marksInWords : '';
 
       rowsHtml.push(`
         <tr style="height: ${rowPx}px;">
-          <td class="col-roll">${roll}</td>
+          <td class="col-roll" style="${rollStyle}">${rollStr}</td>
           <td class="col-figures">${figures}</td>
           <td class="col-words">${words}</td>
         </tr>
       `);
     }
 
-    const pageIndicator = totalPages > 1 ? ` (Page ${pageIdx + 1} of ${totalPages})` : '';
-    const setYearText =
-      config.setNumber && config.date
-        ? `Set / Year ${config.setNumber} / ${config.date.slice(-4) || '2026'}${pageIndicator}`
-        : `Set / Year..................${pageIndicator}`;
+    const setYearText = config.setNumber
+      ? `Set / Year <b>${config.setNumber}</b>`
+      : 'Set / Year..................';
 
     const examText = config.examinationName
-      ? `EXAMINATION  ${config.examinationName}`
-      : 'EXAMINATION ..............................................';
+      ? `EXAMINATION:  <b>${config.examinationName}</b>`
+      : 'EXAMINATION: ..............................................';
 
     const subjectText = config.subject
-      ? `Subject  ${config.subject}`
-      : 'Subject ....................................................';
+      ? `Subject:  <b>${config.subject}</b>`
+      : 'Subject: ....................................................';
 
-    const paperVal = config.paperName || '.............................';
-    const marksVal = config.fullMarks || '...............';
-    const paperMarksText = `Paper  ${paperVal} &nbsp;&nbsp;&nbsp;&nbsp; Full Marks  ${marksVal}`;
+    const paperVal = config.paperName ? `<b>${config.paperName}</b>` : '.............................';
+    const marksVal = config.fullMarks ? `<b>${config.fullMarks}</b>` : '...............';
 
     const courseNoText = config.courseNo
-      ? `<strong>Course No.  ${config.courseNo}</strong>`
-      : 'Course No. .................................................';
+      ? `Course No:  <b>${config.courseNo}</b>`
+      : 'Course No: .................................................';
 
     const dateStr = config.date
-      ? `Date  ${config.date}`
-      : 'Date .................................';
+      ? `Date:  <b>${formatDateToDDMMYYYY(config.date)}</b>`
+      : 'Date: .................................';
 
     return `
       <div class="foil-sheet">
+        <!-- Page Number at Top Left Corner above College Header -->
+        ${totalPages > 1 ? `<div style="text-align: left; font-size: ${fontMeta}; margin-bottom: 1pt;">Page ${pageIdx + 1} of ${totalPages}</div>` : ''}
+
         <!-- College Header in Bold Capital -->
         <div class="foil-college-header">PANCHAYAT COLLEGE, BARAGADA</div>
-        <!-- Header -->
+
+        <!-- Set / Year Header -->
         <div class="foil-top-right">${setYearText}</div>
         <div class="foil-meta-line">${examText}</div>
         <div class="foil-meta-line">${subjectText}</div>
-        <div class="foil-meta-line">${paperMarksText}</div>
+        <div class="foil-meta-line" style="display: flex; align-items: flex-start; justify-content: space-between; width: 100%;">
+          <div style="min-width: 0; padding-right: 6px; word-break: break-word;">Paper:  ${paperVal}</div>
+          <div style="flex-shrink: 0; white-space: nowrap; text-align: right;">Full Marks:  ${marksVal}</div>
+        </div>
         <div class="foil-meta-line">${courseNoText}</div>
 
         <!-- Solid Rule -->
@@ -960,6 +1075,9 @@ export function printMarkFoil(
           font-weight: 500;
           padding: 2px 5px;
           vertical-align: middle;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
         }
         .col-figures {
           text-align: center;
@@ -977,7 +1095,7 @@ export function printMarkFoil(
           vertical-align: middle;
         }
         .foil-footer {
-          margin-top: 5px;
+          margin-top: 32px;
           font-size: ${fontFooter};
           line-height: 1.35;
         }
@@ -1012,41 +1130,42 @@ export function printMarkFoil(
           }
         }
         @media print {
+          @page {
+            size: A4 portrait;
+            margin: 8mm 10mm 8mm 10mm;
+          }
           .no-print {
             display: none !important;
           }
           html, body {
             padding: 0 !important;
             margin: 0 !important;
-            width: 210mm !important;
-            height: 297mm !important;
+            width: 100% !important;
             background: #ffffff !important;
           }
           .mark-foil-page {
-            width: 210mm !important;
-            height: 297mm !important;
-            max-height: 297mm !important;
-            page-break-after: always;
-            break-after: page;
+            width: 100% !important;
+            max-width: 190mm !important;
+            min-height: 275mm !important;
+            page-break-after: always !important;
+            break-after: page !important;
             display: flex !important;
             flex-direction: column !important;
             justify-content: center !important;
             align-items: center !important;
             box-sizing: border-box !important;
-            padding: 0 10mm !important;
+            padding: 0 !important;
             margin: 0 auto !important;
-            overflow: hidden !important;
           }
           .mark-foil-page:last-child {
-            page-break-after: avoid !important;
-            break-after: avoid !important;
+            page-break-after: auto !important;
+            break-after: auto !important;
           }
           .foils-container {
-            width: 190mm !important;
+            width: 100% !important;
             max-width: 190mm !important;
             margin: 0 auto !important;
             page-break-inside: avoid !important;
-            page-break-after: avoid !important;
           }
         }
       </style>

@@ -38,9 +38,11 @@ import {
   CloudUpload,
   Award,
   ExternalLink,
+  ClipboardCheck,
 } from 'lucide-react';
 import { DriveBackupTab } from '../components/DriveBackupTab';
 import { MarkFoilGenerator } from '../components/MarkFoilGenerator';
+import { ExamAttendanceForm } from '../components/ExamAttendanceForm';
 import { ExcelStudentImportModal } from '../components/ExcelStudentImportModal';
 import { BatchPromotionModal } from '../components/BatchPromotionModal';
 import { DownloadsPage } from './DownloadsPage';
@@ -76,6 +78,7 @@ import {
   countActiveStudents,
   isStudentActive,
 } from '../utils/studentStatusUtils';
+import { formatDateToDDMMYYYY, formatDateTimeToDDMMYYYY } from '../utils/dateFormatter';
 
 interface AdminDashboardProps {
   faculty: Faculty[];
@@ -208,6 +211,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     | 'faculty'
     | 'students'
     | 'markFoil'
+    | 'attendanceForm'
     | 'downloads'
     | 'syllabus'
     | 'timetable'
@@ -405,7 +409,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
       `"${c.course}"`,
       `"${c.admissionYear}"`,
       `"${c.password}"`,
-      `"${c.createdAt}"`,
+      `"${formatDateToDDMMYYYY(c.createdAt)}"`,
     ]);
     const csvContent = [headers.join(','), ...rows.map((r) => r.join(','))].join('\n');
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
@@ -856,6 +860,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     { id: 'faculty', label: `Faculty (${faculty.length})`, icon: Users },
     { id: 'students', label: `Students (${countActiveStudents(students)})`, icon: GraduationCap },
     { id: 'markFoil', label: 'Mark Foil Generator', icon: Award },
+    { id: 'attendanceForm', label: 'Exam Attendance Form', icon: ClipboardCheck },
     {
       id: 'downloads',
       label: `Public Downloads (${downloads?.length || 0})`,
@@ -966,6 +971,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                     { label: 'Student IDs & Passwords', count: activeCredentials?.length || 0, tab: 'credentials', highlight: true },
                     { label: 'Active Enrolled Students', count: countActiveStudents(students), tab: 'students' },
                     { label: 'Mark Foil Generator', count: students.length, tab: 'markFoil', highlight: true },
+                    { label: 'Exam Attendance Form', count: countActiveStudents(students), tab: 'attendanceForm', highlight: true },
                     { label: 'Faculty Members', count: faculty.length, tab: 'faculty' },
                     { label: 'Course Syllabi', count: syllabuses.length, tab: 'syllabus' },
                     { label: 'Time Table Periods', count: timeTable.length, tab: 'timetable' },
@@ -1457,6 +1463,11 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
             {/* SECTION: UNIVERSITY CONFIDENTIAL MARK FOIL GENERATOR (ADMIN ONLY) */}
             {activeSection === 'markFoil' && (
               <MarkFoilGenerator students={students} />
+            )}
+
+            {/* SECTION: OFFICIAL EXAM ATTENDANCE FORM (APPENDIX - A) (ADMIN ONLY) */}
+            {activeSection === 'attendanceForm' && (
+              <ExamAttendanceForm students={students} />
             )}
 
             {/* SECTION: PUBLIC DOWNLOADS MANAGEMENT (ADMIN ONLY) */}
@@ -2360,7 +2371,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                         <div>
                           <div className="font-bold text-slate-900">{n.title}</div>
                           <div className="text-[11px] text-slate-500">
-                            {n.date} • {n.category} {n.isArchived ? '(Archived)' : ''}
+                            {formatDateToDDMMYYYY(n.date)} • {n.category} {n.isArchived ? '(Archived)' : ''}
                           </div>
                         </div>
                       </div>
@@ -2506,7 +2517,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                         <div className="flex items-center justify-between">
                           <span className="font-bold text-slate-900 text-sm">{msg.subject}</span>
                           <span className="text-[10px] text-slate-400 font-mono">
-                            {new Date(msg.createdAt).toLocaleString()}
+                            {formatDateTimeToDDMMYYYY(msg.createdAt)}
                           </span>
                         </div>
                         <p className="text-slate-700 bg-white p-3 rounded-lg border border-slate-200">

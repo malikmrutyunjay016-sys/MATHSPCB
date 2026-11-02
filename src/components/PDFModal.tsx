@@ -4,6 +4,7 @@ import { detectFormatInfo, getSafeDownloadFilename, downloadFile, dataUrlToBlob 
 import { generateSampleQuestionPaperPdfDataUrl } from '../utils/samplePdfGenerator';
 import { isGoogleDriveUrl, getGoogleDriveEmbedUrl, downloadGoogleDriveFile } from '../utils/googleDrive';
 import { PDFCanvasViewer } from './PDFCanvasViewer';
+import { formatDateToDDMMYYYY } from '../utils/dateFormatter';
 
 interface PDFModalProps {
   isOpen: boolean;
@@ -159,7 +160,7 @@ export const PDFModal: React.FC<PDFModalProps> = ({
             )}
             {metadata.date && (
               <span>
-                <strong className="text-slate-800">Date:</strong> {metadata.date}
+                <strong className="text-slate-800">Date:</strong> {formatDateToDDMMYYYY(metadata.date)}
               </span>
             )}
             {metadata.size && (

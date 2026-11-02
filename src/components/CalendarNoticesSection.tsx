@@ -22,6 +22,7 @@ import {
 import { Notice, Faculty, CalendarEvent } from '../types';
 import { subscribeToCalendarEvents, saveCalendarEvents } from '../services/db';
 import { initialCalendarEvents } from '../data/initialData';
+import { formatDateToDDMMYYYY } from '../utils/dateFormatter';
 
 interface CalendarNoticesSectionProps {
   notices: Notice[];
@@ -68,17 +69,7 @@ export const CalendarNoticesSection: React.FC<CalendarNoticesSectionProps> = ({
   // Current date computation
   const now = new Date();
   const today = now;
-  const todayFullDateFormatted = today.toLocaleDateString('en-IN', {
-    weekday: 'long',
-    day: 'numeric',
-    month: 'long',
-    year: 'numeric',
-  });
-  const todayFormatted = today.toLocaleDateString('en-IN', {
-    day: 'numeric',
-    month: 'short',
-    year: 'numeric',
-  });
+  const todayFormatted = formatDateToDDMMYYYY(today);
 
   // Current date navigation (defaults to today's active month)
   const [currentDate, setCurrentDate] = useState<Date>(() => new Date(now.getFullYear(), now.getMonth(), 1));
@@ -156,11 +147,6 @@ export const CalendarNoticesSection: React.FC<CalendarNoticesSectionProps> = ({
   const [leaveEndDate, setLeaveEndDate] = useState('2026-10-15');
   const [leaveDateRangeText, setLeaveDateRangeText] = useState('14/10/2026 to 15/10/2026');
 
-  const formatDateToDDMMYYYY = (dateStr: string) => {
-    if (!dateStr) return '';
-    const [y, m, d] = dateStr.split('-');
-    return `${d}/${m}/${y}`;
-  };
 
   const handleStartDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const val = e.target.value;
@@ -613,8 +599,8 @@ export const CalendarNoticesSection: React.FC<CalendarNoticesSectionProps> = ({
             <div className="rounded-lg p-3.5 text-xs border bg-slate-900/80 border-slate-700">
               <div className="flex items-center justify-between mb-1">
                 <div className="flex items-center gap-2">
-                  <span className="font-bold uppercase tracking-wider text-[10px] text-amber-400">
-                    {monthNames[month]} {selectedDay}, {year}
+                  <span className="font-bold uppercase tracking-wider text-[11px] text-amber-400 font-mono">
+                    {formatDateToDDMMYYYY(new Date(year, month, selectedDay))}
                   </span>
                   {selectedDay === today.getDate() && month === today.getMonth() && year === today.getFullYear() && (
                     <span className="px-2 py-0.5 rounded-full bg-amber-500 text-slate-950 font-extrabold text-[9px] uppercase tracking-wider shadow-2xs">
@@ -753,7 +739,7 @@ export const CalendarNoticesSection: React.FC<CalendarNoticesSectionProps> = ({
                   </div>
 
                   <div className="flex items-center justify-between sm:justify-end gap-3 shrink-0 pt-2 sm:pt-0 border-t sm:border-t-0 border-slate-800">
-                    <span className="text-xs text-slate-400 font-mono">{notice.date}</span>
+                    <span className="text-xs text-slate-400 font-mono">{formatDateToDDMMYYYY(notice.date)}</span>
 
                     <div className="flex items-center gap-2">
                       {isAdmin && onSaveNotice && (

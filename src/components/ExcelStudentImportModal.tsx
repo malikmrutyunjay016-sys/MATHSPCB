@@ -18,6 +18,7 @@ import {
 import * as XLSX from 'xlsx';
 import { Student } from '../types';
 import { saveStudent } from '../services/db';
+import { formatDateToDDMMYYYY } from '../utils/dateFormatter';
 
 interface ExcelStudentImportModalProps {
   isOpen: boolean;
@@ -151,7 +152,7 @@ export const ExcelStudentImportModal: React.FC<ExcelStudentImportModalProps> = (
 
   /**
    * Formats any Date of Birth input (Excel serial number, ISO string, yyyy-mm-dd, dd/mm/yyyy, text)
-   * into strictly `dd-mm-yyyy` format.
+   * into strictly `dd/mm/yyyy` format.
    */
   const formatDobToDDMMYYYY = (rawVal: any): string => {
     if (rawVal === undefined || rawVal === null || rawVal === '') return '';
@@ -165,48 +166,11 @@ export const ExcelStudentImportModal: React.FC<ExcelStudentImportModalProps> = (
         const day = String(dateObj.getUTCDate()).padStart(2, '0');
         const month = String(dateObj.getUTCMonth() + 1).padStart(2, '0');
         const year = dateObj.getUTCFullYear();
-        return `${day}-${month}-${year}`;
+        return `${day}/${month}/${year}`;
       }
     }
 
-    const str = String(rawVal).trim();
-
-    // 2. Handle dd-mm-yyyy, dd/mm/yyyy, or dd.mm.yyyy (e.g. "15-06-2005", "15/06/2005", "5/6/2005")
-    const ddMmYyyyMatch = str.match(/^(\d{1,2})[-/.](\d{1,2})[-/.](\d{4})$/);
-    if (ddMmYyyyMatch) {
-      const p1 = parseInt(ddMmYyyyMatch[1], 10);
-      const p2 = parseInt(ddMmYyyyMatch[2], 10);
-      const yr = ddMmYyyyMatch[3];
-
-      let day = p1;
-      let month = p2;
-      // If p1 <= 12 and p2 > 12, it's MM-DD-YYYY
-      if (p1 <= 12 && p2 > 12) {
-        day = p2;
-        month = p1;
-      }
-      return `${String(day).padStart(2, '0')}-${String(month).padStart(2, '0')}-${yr}`;
-    }
-
-    // 3. Handle yyyy-mm-dd or yyyy/mm/dd (e.g. "2005-06-15" or "2005/06/15")
-    const yyyyMmDdMatch = str.match(/^(\d{4})[-/.](\d{1,2})[-/.](\d{1,2})/);
-    if (yyyyMmDdMatch) {
-      const yr = yyyyMmDdMatch[1];
-      const month = String(parseInt(yyyyMmDdMatch[2], 10)).padStart(2, '0');
-      const day = String(parseInt(yyyyMmDdMatch[3], 10)).padStart(2, '0');
-      return `${day}-${month}-${yr}`;
-    }
-
-    // 4. Try JS Date parsing for ISO timestamps or textual dates (e.g. "15 Jun 2005")
-    const parsedDate = new Date(str);
-    if (!isNaN(parsedDate.getTime())) {
-      const day = String(parsedDate.getDate()).padStart(2, '0');
-      const month = String(parsedDate.getMonth() + 1).padStart(2, '0');
-      const year = parsedDate.getFullYear();
-      return `${day}-${month}-${year}`;
-    }
-
-    return str;
+    return formatDateToDDMMYYYY(rawVal);
   };
 
   // Normalize Course stream
@@ -520,7 +484,7 @@ export const ExcelStudentImportModal: React.FC<ExcelStudentImportModalProps> = (
         'Aadhaar Number': '1234-5678-9012',
         'Mobile Number': '+91 94370 12345',
         'Email ID': 'siddharth@example.com',
-        'Date of Birth': '15-06-2005',
+        'Date of Birth': '15/06/2005',
         'Address': 'At/Po Baragada, Bargarh, Odisha',
         'Category': 'GEN',
         'Gender': 'Male',
@@ -537,7 +501,7 @@ export const ExcelStudentImportModal: React.FC<ExcelStudentImportModalProps> = (
         'Aadhaar Number': '2345-6789-0123',
         'Mobile Number': '+91 94370 67890',
         'Email ID': 'ananya@example.com',
-        'Date of Birth': '20-09-2005',
+        'Date of Birth': '20/09/2005',
         'Address': 'Bargarh Town, Odisha',
         'Category': 'OBC',
         'Gender': 'Female',
@@ -554,7 +518,7 @@ export const ExcelStudentImportModal: React.FC<ExcelStudentImportModalProps> = (
         'Aadhaar Number': '3456-7890-1234',
         'Mobile Number': '+91 70088 12345',
         'Email ID': 'rohan@example.com',
-        'Date of Birth': '10-03-2003',
+        'Date of Birth': '10/03/2003',
         'Address': 'Padampur, Bargarh, Odisha',
         'Category': 'ST',
         'Gender': 'Male',

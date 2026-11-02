@@ -25,6 +25,7 @@ import {
   Mail,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { formatDateTimeToDDMMYYYY } from '../utils/dateFormatter';
 import {
   DepartmentBackupData,
   DriveFileInfo,
@@ -536,7 +537,7 @@ export const DriveBackupTab: React.FC<DriveBackupTabProps> = ({
             </div>
             <p className="text-[11px] text-slate-500 mt-0.5">
               {driveFile?.modifiedTime
-                ? `Last modified in Drive: ${new Date(driveFile.modifiedTime).toLocaleString()}`
+                ? `Last modified in Drive: ${formatDateTimeToDDMMYYYY(driveFile.modifiedTime)}`
                 : 'No existing file detected in connected Google Drive. Click "Backup to Google Drive" to sync.'}
             </p>
           </div>

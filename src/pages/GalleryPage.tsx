@@ -25,6 +25,7 @@ import {
 } from 'lucide-react';
 import { GalleryPhoto } from '../types';
 import { useAuth } from '../context/AuthContext';
+import { formatDateToDDMMYYYY } from '../utils/dateFormatter';
 
 interface GalleryPageProps {
   photos: GalleryPhoto[];
@@ -625,7 +626,7 @@ export const GalleryPage: React.FC<GalleryPageProps> = ({
                     <div className="flex flex-wrap items-center gap-2">
                       <span className="inline-flex items-center gap-1 text-[11px] font-bold uppercase tracking-wider text-amber-700 bg-amber-50 px-2.5 py-0.5 rounded border border-amber-200/60">
                         <Calendar className="w-3 h-3 text-amber-600" />
-                        {group.eventDate || 'Department Event'}
+                        {formatDateToDDMMYYYY(group.eventDate) || 'Department Event'}
                       </span>
                       {group.academicYear && (
                         <span className="text-[11px] font-medium text-slate-500 bg-slate-100 px-2 py-0.5 rounded">
@@ -815,7 +816,7 @@ export const GalleryPage: React.FC<GalleryPageProps> = ({
                 </span>
                 {filteredPhotos[activePhotoIndex].eventDate && (
                   <span className="text-slate-400">
-                    • Date: {filteredPhotos[activePhotoIndex].eventDate}
+                    • Date: {formatDateToDDMMYYYY(filteredPhotos[activePhotoIndex].eventDate)}
                   </span>
                 )}
                 {filteredPhotos[activePhotoIndex].fileSizeFormatted && (
@@ -1249,7 +1250,7 @@ const PhotoCard: React.FC<PhotoCardProps> = ({
         <div className="space-y-1">
           <div className="flex items-center gap-1.5 text-[11px] font-semibold text-amber-700">
             <Calendar className="w-3 h-3 text-amber-600" />
-            <span>{photo.eventDate || photo.academicYear || 'Department Event'}</span>
+            <span>{formatDateToDDMMYYYY(photo.eventDate) || photo.academicYear || 'Department Event'}</span>
           </div>
           <h3 className="font-bold text-slate-900 text-xs sm:text-sm line-clamp-2 group-hover:text-amber-600 transition">
             {photo.title}

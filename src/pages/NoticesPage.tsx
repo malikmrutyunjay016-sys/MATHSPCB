@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import { Notice } from '../types';
 import { useAuth } from '../context/AuthContext';
+import { formatDateToDDMMYYYY } from '../utils/dateFormatter';
 
 interface NoticesPageProps {
   notices: Notice[];
@@ -262,7 +263,7 @@ export const NoticesPage: React.FC<NoticesPageProps> = ({
 
                     <span className="text-xs text-slate-500 font-mono flex items-center gap-1">
                       <Calendar className="w-3.5 h-3.5 text-slate-400" />
-                      {notice.date}
+                      {formatDateToDDMMYYYY(notice.date)}
                     </span>
                   </div>
 
