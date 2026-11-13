@@ -1,25 +1,31 @@
 import React from 'react';
 import { CollegeLogo } from './CollegeLogo';
-import { Database, Sparkles, CheckCircle2, RefreshCw } from 'lucide-react';
+import { Database, Sparkles, CheckCircle2, RefreshCw, Users, FileText } from 'lucide-react';
 
 interface DataLoadingBoxProps {
   loadedCount: number;
   totalCount: number;
+  isStudentsLoaded?: boolean;
+  isPYQLoaded?: boolean;
   deptName?: string;
   collegeName?: string;
   logoUrl?: string;
-  onSkip?: () => void;
 }
 
 export const DataLoadingBox: React.FC<DataLoadingBoxProps> = ({
   loadedCount,
   totalCount,
+  isStudentsLoaded = false,
+  isPYQLoaded = false,
   deptName = 'Department of Mathematics',
   collegeName = 'Panchayat College, Baragada',
   logoUrl,
-  onSkip,
 }) => {
-  const percentage = Math.min(100, Math.max(8, Math.round((loadedCount / Math.max(1, totalCount)) * 100)));
+  const rawPercentage = Math.round((loadedCount / Math.max(1, totalCount)) * 100);
+  const allRequiredLoaded = isStudentsLoaded && isPYQLoaded && loadedCount >= totalCount;
+  const percentage = allRequiredLoaded
+    ? 100
+    : Math.min(95, Math.max(8, rawPercentage));
 
   return (
     <div className="fixed inset-0 z-[9999] bg-slate-950/85 backdrop-blur-md flex items-center justify-center p-4 transition-all duration-500 animate-fadeIn">
@@ -64,7 +70,11 @@ export const DataLoadingBox: React.FC<DataLoadingBoxProps> = ({
           <div className="flex items-center justify-between text-xs font-semibold mb-2">
             <span className="text-amber-400 flex items-center gap-1.5">
               <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-              Loading Data & Records...
+              {!isStudentsLoaded
+                ? 'Loading Student Data...'
+                : !isPYQLoaded
+                ? 'Loading Previous Year Questions...'
+                : 'Finalizing Portal Data...'}
             </span>
             <span className="text-slate-300 font-mono bg-slate-800 px-2 py-0.5 rounded-md border border-slate-700">
               {percentage}%
@@ -79,34 +89,66 @@ export const DataLoadingBox: React.FC<DataLoadingBoxProps> = ({
             />
           </div>
 
-          {/* Records Counter */}
-          <div className="mt-3 flex items-center justify-between text-[11px] text-slate-400 border-t border-slate-800/80 pt-2">
-            <span className="flex items-center gap-1">
-              <Database className="w-3 h-3 text-indigo-400" />
-              Modules Synced:
-            </span>
-            <span className="font-semibold text-slate-200">
-              {loadedCount} of {totalCount}
-            </span>
+          {/* Detailed Dataset Checklist */}
+          <div className="mt-3.5 space-y-2 border-t border-slate-800/80 pt-3 text-left">
+            {/* Student Data Status */}
+            <div className="flex items-center justify-between text-xs">
+              <span className="flex items-center gap-2 text-slate-300">
+                <Users className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                <span>All Student Data</span>
+              </span>
+              {isStudentsLoaded ? (
+                <span className="flex items-center gap-1 text-emerald-400 font-semibold">
+                  <CheckCircle2 className="w-3.5 h-3.5" />
+                  Loaded
+                </span>
+              ) : (
+                <span className="flex items-center gap-1.5 text-amber-400/90 font-medium">
+                  <RefreshCw className="w-3 h-3 animate-spin" />
+                  Loading...
+                </span>
+              )}
+            </div>
+
+            {/* Previous Year Questions Status */}
+            <div className="flex items-center justify-between text-xs">
+              <span className="flex items-center gap-2 text-slate-300">
+                <FileText className="w-3.5 h-3.5 text-indigo-400 shrink-0" />
+                <span>Previous Year Questions Data</span>
+              </span>
+              {isPYQLoaded ? (
+                <span className="flex items-center gap-1 text-emerald-400 font-semibold">
+                  <CheckCircle2 className="w-3.5 h-3.5" />
+                  Loaded
+                </span>
+              ) : (
+                <span className="flex items-center gap-1.5 text-amber-400/90 font-medium">
+                  <RefreshCw className="w-3 h-3 animate-spin" />
+                  Loading...
+                </span>
+              )}
+            </div>
+
+            {/* Total Modules Counter */}
+            <div className="flex items-center justify-between text-[11px] text-slate-400 border-t border-slate-800/60 pt-2">
+              <span className="flex items-center gap-1.5">
+                <Database className="w-3 h-3 text-indigo-400" />
+                Department Modules Synced:
+              </span>
+              <span className="font-semibold text-slate-200">
+                {loadedCount} of {totalCount}
+              </span>
+            </div>
           </div>
         </div>
 
         {/* Status Indicator Dots */}
         <div className="flex items-center justify-center gap-2 text-xs text-slate-400">
           <span className="w-2 h-2 rounded-full bg-amber-400 animate-ping" />
-          <span>Synchronizing live database tables...</span>
+          <span>Please wait while student &amp; question bank records load...</span>
         </div>
-
-        {/* Safety Timeout Fallback button if network is slow */}
-        {onSkip && (
-          <button
-            onClick={onSkip}
-            className="mt-5 text-xs text-slate-400 hover:text-amber-300 underline underline-offset-4 transition-colors cursor-pointer"
-          >
-            Taking too long? Click here to enter portal
-          </button>
-        )}
       </div>
     </div>
   );
 };
+

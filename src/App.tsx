@@ -134,6 +134,7 @@ function AppContent() {
   // Data Loading Box State
   const [loadedModules, setLoadedModules] = useState<Set<string>>(new Set());
   const [isDataLoading, setIsDataLoading] = useState<boolean>(true);
+  const [refreshKey, setRefreshKey] = useState<number>(0);
 
   const markModuleLoaded = (modName: string) => {
     setLoadedModules((prev) => {
@@ -144,21 +145,18 @@ function AppContent() {
     });
   };
 
-  useEffect(() => {
-    if (loadedModules.size >= 12 && isDataLoading) {
-      const timer = setTimeout(() => {
-        setIsDataLoading(false);
-      }, 400);
-      return () => clearTimeout(timer);
-    }
-  }, [loadedModules.size, isDataLoading]);
+  const isStudentsLoaded = loadedModules.has('students') && loadedModules.has('credentials');
+  const isPYQLoaded = loadedModules.has('pyq');
+  const isAllRequiredDataLoaded = isStudentsLoaded && isPYQLoaded && loadedModules.size >= 16;
 
   useEffect(() => {
-    const safetyTimer = setTimeout(() => {
-      setIsDataLoading(false);
-    }, 4000);
-    return () => clearTimeout(safetyTimer);
-  }, []);
+    if (isAllRequiredDataLoaded && isDataLoading) {
+      const timer = setTimeout(() => {
+        setIsDataLoading(false);
+      }, 300);
+      return () => clearTimeout(timer);
+    }
+  }, [isAllRequiredDataLoaded, isDataLoading]);
 
   useEffect(() => {
     const unsub = subscribeToQuotaExceeded((isExceeded, upgradeUrl) => {
@@ -471,7 +469,7 @@ function AppContent() {
       unsubInquiries();
       unsubSettings();
     };
-  }, []);
+  }, [refreshKey]);
 
   // Delete Credential Handler
   const handleDeleteCredential = (id: string, name: string) => {
@@ -1227,6 +1225,7 @@ function AppContent() {
             onRefreshData={() => {
               setLoadedModules(new Set());
               setIsDataLoading(true);
+              setRefreshKey((prev) => prev + 1);
             }}
             faculty={faculty}
             students={students}
@@ -1800,10 +1799,11 @@ function AppContent() {
         <DataLoadingBox
           loadedCount={loadedModules.size}
           totalCount={16}
+          isStudentsLoaded={isStudentsLoaded}
+          isPYQLoaded={isPYQLoaded}
           deptName="Department of Mathematics"
           collegeName="Panchayat College, Baragada"
           logoUrl={settings.logoUrl}
-          onSkip={() => setIsDataLoading(false)}
         />
       )}
     </div>
